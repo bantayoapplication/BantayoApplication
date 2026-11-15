@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BANTAYO - Resident View Preview (Dummy)</title>
+  
+  <!-- Tailwind CSS CDN with Class-based Dark Mode -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100 font-sans flex flex-col transition-colors duration-300">
+
+  <!-- Top Preview Banner -->
+  <div class="bg-amber-400 dark:bg-amber-500 text-slate-950 px-6 py-2 flex items-center justify-between text-xs font-bold shadow-md">
+    <div class="flex items-center gap-2">
+      <i data-lucide="eye" class="w-4 h-4"></i>
+      <span>OFFICIAL PREVIEW MODE — Dummy Resident Interface</span>
+    </div>
+    <button onclick="window.location.href='landing.html'" class="bg-slate-950 hover:bg-slate-800 text-white px-3 py-1 rounded-lg text-[11px] transition cursor-pointer">
+      ← Back to Command Center
+    </button>
+  </div>
+
+  <!-- Simulated Resident App Header -->
+  <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white px-6 py-3 flex justify-between items-center transition-colors duration-300">
+    <div class="flex items-center space-x-3">
+      <img src="https://i.ibb.co/3R2011g/bantayo-logo.png" alt="BANTAYO Logo" class="w-9 h-9 object-contain rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-950" />
+      <h1 class="text-base font-extrabold tracking-wide text-slate-900 dark:text-white">BANTAYO <span class="text-[10px] font-normal text-slate-500 dark:text-slate-400">Baguio GIS PWA (Dummy)</span></h1>
+    </div>
+    <div class="flex items-center gap-2.5">
+      <span class="text-[10px] bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 px-2.5 py-1 rounded-md font-semibold">Resident Preview</span>
+      
+      <!-- Sun / Moon Theme Toggle Button -->
+      <button onclick="toggleTheme()" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-amber-400 hover:scale-105 transition cursor-pointer" title="Toggle Light / Dark Mode">
+        <i id="theme-icon" data-lucide="sun" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Simulated Resident Dashboard Body -->
+  <main class="flex-1 max-w-5xl w-full mx-auto p-6 grid grid-cols-1 md:grid-cols-12 gap-6">
+    
+    <!-- Left Column: Dummy Action Card -->
+    <div class="md:col-span-5 space-y-4">
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-md transition-colors">
+        <p class="text-xs text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wider">Baguio Disaster Command Center</p>
+        <h2 class="text-2xl font-black text-slate-900 dark:text-white mt-1">Hello, Resident!</h2>
+        <p class="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">This is a simulated preview of the resident reporting screen. Submissions are disabled in preview mode.</p>
+        <button onclick="alert('Preview Mode: Actual submissions are disabled in the dummy view.')" class="mt-5 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3 px-4 rounded-xl shadow-lg flex items-center justify-center space-x-2 transition cursor-pointer">
+          <i data-lucide="camera" class="w-4 h-4"></i>
+          <span>Report New Hazard (Simulated)</span>
+        </button>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3 shadow-md transition-colors">
+        <h3 class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Sample Community Feed</h3>
+        <div class="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl space-y-1">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-slate-900 dark:text-white">Clogged Drainage Canal</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800">Pending</span>
+          </div>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400">📍 Aurora Hill, Baguio City</p>
+        </div>
+        <div class="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl space-y-1">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-slate-900 dark:text-white">Minor Soil Erosion</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">Resolved</span>
+          </div>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400">📍 Session Road Upper, Baguio City</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Dummy GIS Map -->
+    <div class="md:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 flex flex-col shadow-md transition-colors">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Resident GIS Map View</h3>
+        <span class="text-[10px] text-slate-500 dark:text-slate-400">Read-Only Preview</span>
+      </div>
+      <div id="dummy-map" class="w-full flex-1 min-h-[320px] rounded-xl border border-slate-200 dark:border-slate-800 z-10"></div>
+    </div>
+
+  </main>
+
+  <script>
+    function applyTheme(theme) {
+      const html = document.documentElement;
+      const icon = document.getElementById('theme-icon');
+      if (theme === 'light') {
+        html.classList.remove('dark');
+        if (icon) icon.setAttribute('data-lucide', 'moon');
+      } else {
+        html.classList.add('dark');
+        if (icon) icon.setAttribute('data-lucide', 'sun');
+      }
+      localStorage.setItem('bantayo-theme', theme);
+      lucide.createIcons();
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.contains('dark');
+      applyTheme(isDark ? 'light' : 'dark');
+    }
+
+    applyTheme(localStorage.getItem('bantayo-theme') || 'dark');
+
+    const dummyMap = L.map('dummy-map').setView([16.416, 120.596], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(dummyMap);
+
+    L.marker([16.416, 120.596]).addTo(dummyMap).bindPopup("<b>Sample Hazard Pin</b><br>Baguio City Center");
+  </script>
+</body>
+</html>

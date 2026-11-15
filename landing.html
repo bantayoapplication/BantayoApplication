@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BANTAYO - Barangay Official Command Center</title>
+  
+  <!-- Tailwind CSS CDN with Class-based Dark Mode -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Firebase Compat SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC2WSefQ2Hs6S4AJBESDs4F5iJwPK7jVzU",
+      authDomain: "bantayoapplication.firebaseapp.com",
+      projectId: "bantayoapplication",
+      storageBucket: "bantayoapplication.firebasestorage.app",
+      messagingSenderId: "51777911890",
+      appId: "1:51777911890:web:0c876b31a75ab8c0f7338b",
+      measurementId: "G-5KJ7LE1KFF"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    firebase.auth().onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      const isOfficialDomain = user.email && user.email.toLowerCase().endsWith('@students.uc-bcf.edu.ph');
+      if (isOfficialDomain) return;
+
+      try {
+        const doc = await db.collection("users").doc(user.uid).get();
+        if (!doc.exists || doc.data().role !== 'official') {
+          alert("Access Denied: You do not have Barangay Official privileges.");
+          window.location.href = 'index.html';
+        }
+      } catch (err) {
+        alert("Access Denied: Unable to verify official clearance.");
+        window.location.href = 'index.html';
+      }
+    });
+
+    function switchToDummyResidentView() {
+      window.location.href = 'resident-view.html';
+    }
+
+    async function handleOfficialLogout() {
+      try {
+        await firebase.auth().signOut();
+        window.location.href = 'login.html';
+      } catch (err) {
+        alert("Error signing out: " + err.message);
+      }
+    }
+  </script>
+
+  <style>
+    #map-wrapper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 450px;
+    }
+    #map {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1;
+      border-radius: 1rem;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100 font-sans flex flex-col transition-colors duration-300" onclick="closeAllPopups(event)">
+
+  <!-- Top Navbar -->
+  <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between shadow-sm transition-colors duration-300">
+    <div class="flex items-center gap-3">
+      <img src="logo.png" alt="BANTAYO Logo" class="w-9 h-9 object-contain rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-950" />
+      <div>
+        <h1 class="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">BANTAYO <span class="text-[10px] font-normal text-slate-500 dark:text-slate-400 ml-1">Barangay Official Command Center</span></h1>
+        <p class="text-[10px] text-slate-500 dark:text-slate-400">Real-time disaster risk reduction and hazard tracking dashboard</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <div class="hidden sm:flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 px-3 py-1.5 rounded-xl text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        Cloud Sync Active
+      </div>
+      <button onclick="openUsersPanel()" class="bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-xs font-semibold px-4 py-2 rounded-xl border border-blue-200 dark:border-blue-900/80 transition cursor-pointer">
+        👥 Users
+      </button>
+      <button onclick="switchToDummyResidentView()" class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 transition cursor-pointer">
+        Resident View (Dummy) ↗
+      </button>
+      <button onclick="handleOfficialLogout()" class="bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-400 text-xs font-semibold px-3.5 py-2 rounded-xl border border-rose-200 dark:border-rose-900/80 transition cursor-pointer">
+        Sign Out
+      </button>
+
+      <!-- Sun / Moon Theme Toggle Button -->
+      <button onclick="toggleTheme()" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-amber-400 hover:scale-105 transition cursor-pointer" title="Toggle Light / Dark Mode">
+        <i id="theme-icon" data-lucide="sun" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 overflow-hidden">
+    
+    <!-- Left Column: Incoming Reports Feed -->
+    <section class="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 flex flex-col shadow-md transition-colors duration-300">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-2">
+          <i data-lucide="radio" class="w-5 h-5 text-blue-600 dark:text-blue-400"></i>
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">Incoming Hazard Reports</h2>
+        </div>
+        <span id="report-count" class="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 text-xs font-bold px-2.5 py-1 rounded-xl">0 Reports</span>
+      </div>
+
+      <div class="text-xs text-slate-500 dark:text-slate-400 mb-4">Manage, update status, or delete community-submitted incidents.</div>
+
+      <!-- Active user filter -->
+      <div id="filter-chip" class="hidden mb-3 flex items-center justify-between gap-3 text-[11px] text-blue-800 dark:text-blue-200 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900/70 rounded-xl px-3 py-2"></div>
+
+      <!-- Feed Container -->
+      <div id="reports-container" class="flex-1 overflow-y-auto space-y-3 pr-1">
+        <div class="text-center py-16 text-slate-400 dark:text-slate-500 text-xs italic">
+          Connecting to cloud database...
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: GIS Spatial Radar Map -->
+    <section class="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 flex flex-col shadow-md transition-colors duration-300">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-2">
+          <i data-lucide="map" class="w-5 h-5 text-blue-600 dark:text-blue-400"></i>
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">Barangay Spatial Radar</h2>
+        </div>
+        <span class="text-xs text-slate-500 dark:text-slate-400">Live geographic coordinates of active hazards</span>
+      </div>
+
+      <div id="map-wrapper" class="flex-1 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+        <div id="map"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Users panel: every user with their Pending / In Progress / Resolved report counts -->
+  <div id="users-overlay" class="hidden fixed inset-0 z-[2000] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4" onclick="closeUsersPanel()">
+    <div class="w-full max-w-2xl max-h-[85vh] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl" onclick="event.stopPropagation()">
+      <div class="flex items-start justify-between gap-4 p-6 pb-4 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <h2 class="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">👥 Users &amp; Report Status</h2>
+          <p id="users-summary" class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Loading users...</p>
+        </div>
+        <button onclick="closeUsersPanel()" class="flex-shrink-0 w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:scale-105 transition cursor-pointer" title="Close">✕</button>
+      </div>
+
+      <div class="px-6 pt-4 space-y-2">
+        <input id="users-search" type="search" oninput="renderUsersPanel()" placeholder="Search users by email..." class="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white focus:border-blue-500 outline-none" />
+        <p id="users-note" class="hidden text-[10px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-lg px-3 py-2">
+          Could not read the full user list (check your Firestore rules for the "users" collection), so only users who have submitted reports are shown.
+        </p>
+      </div>
+
+      <div id="users-list" class="flex-1 overflow-y-auto p-6 pt-4 space-y-3"></div>
+    </div>
+  </div>
+
+  <script>
+    // Theme Switcher
+    function applyTheme(theme) {
+      const html = document.documentElement;
+      const icon = document.getElementById('theme-icon');
+      if (theme === 'light') {
+        html.classList.remove('dark');
+        if (icon) icon.setAttribute('data-lucide', 'moon');
+      } else {
+        html.classList.add('dark');
+        if (icon) icon.setAttribute('data-lucide', 'sun');
+      }
+      localStorage.setItem('bantayo-theme', theme);
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.contains('dark');
+      applyTheme(isDark ? 'light' : 'dark');
+    }
+
+    applyTheme(localStorage.getItem('bantayo-theme') || 'dark');
+
+    // Leaflet Map Setup
+    const map = L.map('map').setView([16.4023, 120.5960], 14);
+
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    setTimeout(() => { map.invalidateSize(); }, 250);
+
+    let markersLayer = L.layerGroup().addTo(map);
+
+    // ---------- State shared by the feed, the map and the Users panel ----------
+    let allReports = [];
+    let userDirectory = [];      // from the "users" collection (stays empty if Firestore rules block it)
+    let directoryError = false;
+    let userFilter = null;       // owner key of the user whose reports are currently shown
+    let usersPanelOpen = false;
+    let lastUserRows = [];
+
+    function esc(value) {
+      return String(value === undefined || value === null ? '' : value)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function hasMapCoords(lat, lng) {
+      if (lat === null || lat === undefined || lat === '' || lng === null || lng === undefined || lng === '') return false;
+      return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+    }
+
+    // Who submitted a report: email first, then the user id, then "unknown" (older reports)
+    function ownerKey(r) {
+      const fromDir = userDirectory.find(u => u.uid === r.userId);
+      const email = r.userEmail || (fromDir && fromDir.email) || '';
+      return String(email || r.userId || 'unknown').toLowerCase();
+    }
+
+    // One row per user with their report counts by status
+    function buildUserRows() {
+      const rows = new Map();
+      const dirByEmail = {};
+      userDirectory.forEach(u => { if (u.email) dirByEmail[u.email.toLowerCase()] = u; });
+
+      const ensure = (key, email, role) => {
+        if (!rows.has(key)) {
+          rows.set(key, {
+            key,
+            email: key === 'unknown' ? 'Older reports (no user info)' : (email || key),
+            role: role || 'resident',
+            pending: 0, inProgress: 0, resolved: 0, total: 0
+          });
+        }
+        return rows.get(key);
+      };
+
+      // Registered residents show up even before they submit anything
+      userDirectory.forEach(u => {
+        if (u.role !== 'official') ensure((u.email || u.uid).toLowerCase(), u.email, u.role);
+      });
+
+      allReports.forEach(r => {
+        const key = ownerKey(r);
+        const dirUser = dirByEmail[key];
+        const row = ensure(key, r.userEmail || (dirUser && dirUser.email), dirUser ? dirUser.role : 'resident');
+        const status = r.status || 'Pending';
+        if (status === 'Resolved') row.resolved++;
+        else if (status === 'In Progress') row.inProgress++;
+        else row.pending++;
+        row.total++;
+      });
+
+      return Array.from(rows.values()).sort((a, b) => (b.total - a.total) || a.email.localeCompare(b.email));
+    }
+
+    async function loadUserDirectory() {
+      try {
+        const snap = await db.collection('users').get();
+        userDirectory = snap.docs.map(d => ({
+          uid: d.id,
+          email: d.data().email || '',
+          role: d.data().role || 'resident'
+        }));
+        directoryError = false;
+      } catch (err) {
+        console.warn('Could not read the users collection:', err);
+        directoryError = true;
+      }
+    }
+
+    async function openUsersPanel() {
+      usersPanelOpen = true;
+      document.getElementById('users-overlay').classList.remove('hidden');
+      renderUsersPanel();            // show the stats from reports right away
+      await loadUserDirectory();     // then add registered users who have no reports yet
+      if (usersPanelOpen) renderUsersPanel();
+    }
+
+    function closeUsersPanel() {
+      usersPanelOpen = false;
+      const overlay = document.getElementById('users-overlay');
+      if (overlay) overlay.classList.add('hidden');
+    }
+
+    function renderUsersPanel() {
+      const list = document.getElementById('users-list');
+      const summary = document.getElementById('users-summary');
+      const note = document.getElementById('users-note');
+      if (!list) return;
+
+      const query = (document.getElementById('users-search').value || '').trim().toLowerCase();
+      const everyone = buildUserRows();
+      lastUserRows = everyone.filter(u => !query || u.email.toLowerCase().includes(query));
+
+      summary.innerText = `${everyone.length} user${everyone.length === 1 ? '' : 's'} · ${allReports.length} report${allReports.length === 1 ? '' : 's'} in total`;
+      note.classList.toggle('hidden', !directoryError);
+
+      if (lastUserRows.length === 0) {
+        list.innerHTML = `<p class="text-center text-xs text-slate-400 dark:text-slate-500 italic py-10">${everyone.length === 0 ? 'No users or reports yet.' : 'No users match your search.'}</p>`;
+        return;
+      }
+
+      list.innerHTML = lastUserRows.map((u, i) => {
+        const pct = (n) => u.total ? Math.round((n / u.total) * 100) : 0;
+        const initials = u.key === 'unknown' ? '?' : u.email.substring(0, 2).toUpperCase();
+        const roleBadge = u.role === 'official'
+          ? '<span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-violet-50 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800">Official</span>'
+          : '';
+        return `
+          <div class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 flex-shrink-0 rounded-xl bg-blue-600 text-white text-xs font-black flex items-center justify-center shadow">${esc(initials)}</div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                  <p class="text-xs font-bold text-slate-900 dark:text-white truncate">${esc(u.email)}</p>
+                  ${roleBadge}
+                </div>
+                <p class="text-[10px] text-slate-500 dark:text-slate-400">${u.total} report${u.total === 1 ? '' : 's'} submitted</p>
+              </div>
+              <button onclick="filterByUser(${i})" ${u.total === 0 ? 'disabled' : ''} class="text-[10px] font-bold px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                View reports
+              </button>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div class="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60">
+                <div class="text-base font-black text-rose-600 dark:text-rose-400">${u.pending}</div>
+                <div class="text-[10px] font-semibold text-rose-700 dark:text-rose-300">Pending</div>
+              </div>
+              <div class="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60">
+                <div class="text-base font-black text-amber-600 dark:text-amber-400">${u.inProgress}</div>
+                <div class="text-[10px] font-semibold text-amber-700 dark:text-amber-300">In Progress</div>
+              </div>
+              <div class="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60">
+                <div class="text-base font-black text-emerald-600 dark:text-emerald-400">${u.resolved}</div>
+                <div class="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">Resolved</div>
+              </div>
+            </div>
+
+            <div class="flex h-1.5 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800" title="Pending / In Progress / Resolved">
+              <div class="bg-rose-500" style="width:${pct(u.pending)}%"></div>
+              <div class="bg-amber-500" style="width:${pct(u.inProgress)}%"></div>
+              <div class="bg-emerald-500" style="width:${pct(u.resolved)}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Show only one user's reports in the feed and on the map
+    function filterByUser(i) {
+      const row = lastUserRows[i];
+      if (!row) return;
+      userFilter = row.key;
+      closeUsersPanel();
+      renderFeed();
+    }
+
+    function clearUserFilter() {
+      userFilter = null;
+      renderFeed();
+    }
+
+    function updateFilterChip() {
+      const chip = document.getElementById('filter-chip');
+      if (!chip) return;
+      if (!userFilter) {
+        chip.classList.add('hidden');
+        chip.innerHTML = '';
+        return;
+      }
+      const row = buildUserRows().find(u => u.key === userFilter);
+      chip.classList.remove('hidden');
+      chip.innerHTML = `
+        <span class="truncate">Showing reports from <b>${esc(row ? row.email : userFilter)}</b></span>
+        <button onclick="clearUserFilter()" class="flex-shrink-0 font-bold px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition cursor-pointer">✕ Show all</button>
+      `;
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeUsersPanel();
+    });
+
+    // ---------- Live reports from Firestore ----------
+    function loadReports() {
+      db.collection("hazard_reports").onSnapshot((snapshot) => {
+        allReports = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderFeed();
+        if (usersPanelOpen) renderUsersPanel();   // keep the Users panel live while it is open
+      }, (error) => {
+        console.error("Firestore Listen Error:", error);
+      });
+    }
+
+    function renderFeed() {
+        const container = document.getElementById('reports-container');
+        const countBadge = document.getElementById('report-count');
+        container.innerHTML = "";
+        markersLayer.clearLayers();
+        updateFilterChip();
+
+        const visible = userFilter ? allReports.filter(r => ownerKey(r) === userFilter) : allReports;
+
+        if (visible.length === 0) {
+          countBadge.innerText = "0 Reports";
+          container.innerHTML = `<div class="text-center py-16 text-slate-400 dark:text-slate-500 text-xs italic">${userFilter ? 'This user has no reports yet.' : 'No reports recorded in the cloud database.'}</div>`;
+          return;
+        }
+
+        countBadge.innerText = `${visible.length} Report${visible.length > 1 ? 's' : ''}`;
+
+        visible.forEach((data) => {
+          const reportId = data.id;
+
+          const categoryName = data.category || data.title || data.hazardType || "Hazard Incident";
+          const descriptionText = data.description || "No description provided.";
+          const locationName = data.location ? `📍 ${data.location}` : '';
+          
+          const lat = data.lat;
+          const lng = data.lng;
+          const currentStatus = data.status || "Pending";
+
+          let timeDisplay = data.date || "Recent";
+          if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+            const d = data.createdAt.toDate();
+            timeDisplay = d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+          }
+
+          let statusBadgeClass = "bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800";
+          if (currentStatus === "In Progress") {
+            statusBadgeClass = "bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800";
+          } else if (currentStatus === "Resolved") {
+            statusBadgeClass = "bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800";
+          }
+
+          const allStatuses = ["Pending", "In Progress", "Resolved"];
+          const availableStatuses = allStatuses.filter(s => s !== currentStatus);
+
+          const card = document.createElement('div');
+          card.className = "bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col gap-2.5 hover:border-slate-300 dark:hover:border-slate-700 transition shadow-sm relative";
+          card.innerHTML = `
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-xs text-blue-700 dark:text-blue-400 uppercase bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 px-2.5 py-0.5 rounded-md">${categoryName}</span>
+              <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border ${statusBadgeClass}">
+                ${currentStatus}
+              </span>
+            </div>
+            <p class="text-xs text-slate-700 dark:text-slate-300">${descriptionText}</p>
+            <div class="text-[10px] text-slate-400 dark:text-slate-500">🕒 Submitted: ${timeDisplay}</div>
+            <div class="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-900 text-[11px] text-slate-500 dark:text-slate-400">
+              <span class="truncate max-w-[200px]">${locationName} (${lat ? Number(lat).toFixed(4) : 'N/A'}, ${lng ? Number(lng).toFixed(4) : 'N/A'})</span>
+              
+              <div class="flex items-center gap-2 relative flex-shrink-0">
+                <div class="relative">
+                  <button onclick="event.stopPropagation(); togglePopup('${reportId}')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition cursor-pointer flex items-center gap-1 shadow-sm">
+                    Status ▾
+                  </button>
+
+                  <div id="popup-${reportId}" class="hidden absolute right-0 bottom-full mb-2 w-36 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 p-1.5 space-y-1">
+                    <button onclick="updateStatus('${reportId}', '${availableStatuses[0]}')" class="w-full text-left text-[11px] font-bold px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-200">
+                      <span class="w-2 h-2 rounded-full ${availableStatuses[0] === 'Pending' ? 'bg-rose-500' : availableStatuses[0] === 'In Progress' ? 'bg-amber-500' : 'bg-emerald-500'}"></span> ${availableStatuses[0]}
+                    </button>
+                    <button onclick="updateStatus('${reportId}', '${availableStatuses[1]}')" class="w-full text-left text-[11px] font-bold px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-200">
+                      <span class="w-2 h-2 rounded-full ${availableStatuses[1] === 'Pending' ? 'bg-rose-500' : availableStatuses[1] === 'In Progress' ? 'bg-amber-500' : 'bg-emerald-500'}"></span> ${availableStatuses[1]}
+                    </button>
+                  </div>
+                </div>
+
+                <button onclick="deleteReport('${reportId}')" class="text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/80 text-rose-700 dark:text-rose-300 transition cursor-pointer shadow-sm" title="Delete Report">
+                  🗑️ Delete
+                </button>
+              </div>
+            </div>
+          `;
+          container.appendChild(card);
+
+          if (hasMapCoords(lat, lng)) {
+            const marker = L.marker([Number(lat), Number(lng)]).bindPopup(`
+              <div style="color: #0f172a; font-family: sans-serif;">
+                <b>${categoryName}</b> (${currentStatus})<br>
+                ${descriptionText}<br>
+                <small>${timeDisplay}</small>
+              </div>
+            `);
+            markersLayer.addLayer(marker);
+          }
+        });
+    }
+
+    window.togglePopup = function(id) {
+      document.querySelectorAll("[id^='popup-']").forEach(el => {
+        if (el.id !== `popup-${id}`) el.classList.add('hidden');
+      });
+
+      const popup = document.getElementById(`popup-${id}`);
+      if (popup) {
+        popup.classList.toggle('hidden');
+      }
+    };
+
+    window.closeAllPopups = function() {
+      document.querySelectorAll("[id^='popup-']").forEach(el => {
+        el.classList.add('hidden');
+      });
+    };
+
+    window.updateStatus = async function(id, newStatus) {
+      try {
+        await db.collection("hazard_reports").doc(id).update({
+          status: newStatus
+        });
+      } catch (err) {
+        alert("Error updating status: " + err.message);
+      }
+    };
+
+    window.deleteReport = async function(id) {
+      if (confirm("Are you sure you want to permanently delete this hazard report?")) {
+        try {
+          await db.collection("hazard_reports").doc(id).delete();
+        } catch (err) {
+          alert("Error removing report: " + err.message);
+        }
+      }
+    };
+
+    loadReports();
+  </script>
+</body>
+</html>

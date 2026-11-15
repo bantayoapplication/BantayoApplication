@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>BANTAYO - Secure Access Portal</title>
+
+  <!-- Phone / PWA friendliness -->
+  <meta name="theme-color" content="#070722">
+  <meta name="color-scheme" content="dark">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BANTAYO">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="logo.png">
+  <link rel="apple-touch-icon" href="logo.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --text: #f4f5ff;
+      --muted: #a3a7d6;
+      --line: rgba(140, 140, 255, .28);
+      --accent: #8f86ff;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; background: #070722; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: var(--text);
+      background: #070722;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-font-smoothing: antialiased;
+    }
+    .hidden { display: none !important; }
+
+    /* ---------- Background scene ---------- */
+    .scene {
+      position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+      background:
+        radial-gradient(1100px 700px at 6% -8%, rgba(99, 90, 255, .50), transparent 62%),
+        radial-gradient(900px 620px at 104% 108%, rgba(124, 92, 255, .42), transparent 62%),
+        radial-gradient(700px 500px at 60% 40%, rgba(40, 40, 140, .35), transparent 70%),
+        linear-gradient(160deg, #0b0b3d 0%, #070724 48%, #0a0a35 100%);
+    }
+    .scene svg { position: absolute; display: block; }
+    .waves { inset: 0; width: 100%; height: 100%; }
+    .waves-port { display: none; }
+    .circuit { top: 0; right: 0; width: min(46vw, 760px); height: auto; opacity: .95; }
+    .shield  { left: 9%; top: 24%; width: min(18vw, 300px); height: auto; opacity: .17; }
+    .city {
+      left: 0; bottom: 0; width: min(62vw, 1000px); height: auto; opacity: .9;
+      -webkit-mask-image: linear-gradient(to top, #000 38%, transparent 100%);
+              mask-image: linear-gradient(to top, #000 38%, transparent 100%);
+    }
+
+    /* ---------- Layout ---------- */
+    main.wrap {
+      position: relative; z-index: 1;
+      min-height: 100vh; min-height: 100dvh;
+      display: flex;
+      padding:
+        max(24px, env(safe-area-inset-top))
+        max(16px, env(safe-area-inset-right))
+        max(24px, env(safe-area-inset-bottom))
+        max(16px, env(safe-area-inset-left));
+    }
+
+    /* ---------- Glass card ---------- */
+    .card {
+      width: 100%; max-width: 463px; margin: auto;
+      padding: 32px 36px 26px;
+      border-radius: 36px;
+      border: 1.5px solid transparent;
+      background:
+        linear-gradient(160deg, rgba(46, 42, 122, .58), rgba(18, 18, 62, .66) 55%, rgba(22, 22, 70, .58)) padding-box,
+        linear-gradient(160deg, rgba(150, 130, 255, .95), rgba(80, 70, 200, .30) 45%, rgba(125, 112, 255, .75)) border-box;
+      -webkit-backdrop-filter: blur(18px) saturate(140%);
+              backdrop-filter: blur(18px) saturate(140%);
+      box-shadow: 0 24px 70px rgba(5, 4, 40, .65), 0 0 46px rgba(95, 80, 240, .22);
+    }
+    .brand { text-align: center; }
+    .logo {
+      width: 84px; height: 84px; display: block; margin: 0 auto 16px;
+      object-fit: contain; padding: 4px; border-radius: 20px; background: #fff;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, .38);
+    }
+    h1 { margin: 0; font-size: 26px; line-height: 1.2; font-weight: 800; letter-spacing: -.01em; }
+    .subtitle { margin: 8px 0 0; font-size: 14px; line-height: 1.4; color: var(--muted); }
+
+    .field { margin-top: 18px; }
+    .field label { display: block; margin: 0 0 8px 2px; font-size: 14px; font-weight: 600; }
+    .input { position: relative; }
+    .input input {
+      width: 100%; height: 52px; padding: 0 48px;
+      font: inherit; font-size: 16px;               /* 16px stops iOS from zooming in */
+      color: #fff; caret-color: #fff;
+      background: rgba(8, 8, 34, .72);
+      border: 1px solid rgba(140, 140, 255, .22);
+      border-radius: 20px; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .input input::placeholder { color: #7c80ad; }
+    .input input:focus { border-color: #7c6cff; box-shadow: 0 0 0 3px rgba(124, 108, 255, .28); }
+    .input input:-webkit-autofill {
+      -webkit-text-fill-color: #fff;
+      -webkit-box-shadow: 0 0 0 1000px #0b0b30 inset;
+      transition: background-color 9999s;
+    }
+    .input .ico {
+      position: absolute; left: 16px; top: 50%; width: 22px; height: 22px;
+      transform: translateY(-50%); color: #9a9dc9; pointer-events: none;
+    }
+    .eye {
+      position: absolute; right: 5px; top: 50%; width: 44px; height: 44px; transform: translateY(-50%);
+      display: grid; place-items: center; padding: 0; border: 0; border-radius: 16px;
+      background: transparent; color: #9a9dc9; cursor: pointer;
+    }
+    .eye:hover, .eye:focus-visible { color: #fff; outline: none; }
+    .eye svg { width: 22px; height: 22px; }
+
+    .hint { margin: 8px 4px 0; font-size: 12px; font-weight: 600; line-height: 1.4; }
+    .hint-good { color: #34d399; }
+    .hint-bad  { color: #fb7185; }
+    .help { margin: 8px 4px 0; font-size: 12px; line-height: 1.45; color: var(--muted); }
+
+    .btn {
+      width: 100%; height: 54px; margin-top: 22px;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      font: inherit; font-size: 17px; font-weight: 700; color: #fff;
+      border: 0; border-radius: 16px; cursor: pointer; touch-action: manipulation;
+      background: linear-gradient(90deg, #4f46e5 0%, #6a5cf6 55%, #8b7cff 100%);
+      box-shadow: 0 10px 28px rgba(79, 70, 229, .45), inset 0 1px 0 rgba(255, 255, 255, .25);
+      transition: transform .12s, filter .15s, opacity .15s;
+    }
+    .btn svg { width: 22px; height: 22px; }
+    .btn:hover { filter: brightness(1.08); }
+    .btn:active { transform: scale(.98); }
+    .btn:disabled { opacity: .7; cursor: wait; }
+    .btn:focus-visible, .switch button:focus-visible { outline: 2px solid #c4bcff; outline-offset: 3px; }
+
+    .switch { display: flex; align-items: center; gap: 14px; margin-top: 24px; font-size: 14px; color: var(--muted); }
+    .switch::before, .switch::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+    .switch p { margin: 0; text-align: center; line-height: 1.5; }
+    .switch button {
+      padding: 8px 2px; font: inherit; font-weight: 700; color: var(--accent);
+      background: none; border: 0; cursor: pointer; touch-action: manipulation;
+    }
+    .switch button:hover { text-decoration: underline; }
+
+    /* ---------- Smartphones ---------- */
+    @media (max-width: 520px) {
+      .card { padding: 26px 20px 20px; border-radius: 28px; }
+      h1 { font-size: 24px; }
+      .logo { width: 76px; height: 76px; margin-bottom: 14px; }
+      .field { margin-top: 16px; }
+      .switch { gap: 10px; font-size: 13.5px; }
+    }
+    /* Portrait phones: swap in a portrait-shaped background */
+    @media (orientation: portrait) {
+      .waves-land { display: none; }
+      .waves-port { display: block; }
+      .shield { display: none; }
+      .circuit { width: min(78vw, 520px); }
+      .city { width: 100%; opacity: .75; }
+    }
+    /* Landscape phones / short windows: tighter card so it fits */
+    @media (max-height: 640px) {
+      main.wrap { padding-top: max(14px, env(safe-area-inset-top)); padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+      .card { padding-top: 20px; padding-bottom: 18px; }
+      .logo { width: 60px; height: 60px; margin-bottom: 10px; border-radius: 16px; }
+      h1 { font-size: 22px; }
+      .field { margin-top: 12px; }
+      .input input { height: 48px; }
+      .btn { height: 50px; margin-top: 16px; }
+      .switch { margin-top: 16px; }
+    }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</head>
+<body>
+
+  <!-- Background: waves, circuit lines, shield, city skyline (all vector, no image download) -->
+  <div class="scene" aria-hidden="true">
+
+    <svg class="waves waves-land" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+      <defs>
+        <linearGradient id="wl1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7a6bff" stop-opacity=".85"/><stop offset="1" stop-color="#2a2a9a" stop-opacity="0"/></linearGradient>
+        <linearGradient id="wl2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b52e8" stop-opacity=".6"/><stop offset="1" stop-color="#2a2a9a" stop-opacity="0"/></linearGradient>
+        <linearGradient id="wl3" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#2b2fb8" stop-opacity="0"/><stop offset=".55" stop-color="#5b4df0" stop-opacity=".78"/><stop offset="1" stop-color="#9b8cff"/></linearGradient>
+      </defs>
+      <path d="M0 0H470C380 110 210 205 0 245Z" fill="url(#wl1)"/>
+      <path d="M0 0H760C620 170 330 320 0 372Z" fill="url(#wl2)" opacity=".5"/>
+      <path d="M0 0H300C230 70 120 130 0 160Z" fill="#8b7cff" opacity=".22"/>
+      <path d="M0 786C260 770 560 830 880 900H0Z" fill="#3c3cbe" opacity=".16"/>
+      <path d="M0 786C260 770 560 830 880 900" fill="none" stroke="#6c6cff" stroke-opacity=".5" stroke-width="2"/>
+      <path d="M1600 250C1450 300 1300 420 1200 560C1120 680 1000 780 820 900" fill="none" stroke="#7c7cff" stroke-opacity=".16" stroke-width="2"/>
+      <path d="M1600 610C1420 770 1180 860 960 900H1600Z" fill="url(#wl3)"/>
+      <path d="M1600 610C1420 770 1180 860 960 900" fill="none" stroke="#b3a8ff" stroke-opacity=".75" stroke-width="2"/>
+      <path d="M1600 690C1450 800 1250 870 1130 900" fill="none" stroke="#b3a8ff" stroke-opacity=".35" stroke-width="1.5"/>
+    </svg>
+
+    <svg class="waves waves-port" viewBox="0 0 400 800" preserveAspectRatio="xMidYMid slice">
+      <defs>
+        <linearGradient id="wp1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7a6bff" stop-opacity=".85"/><stop offset="1" stop-color="#2a2a9a" stop-opacity="0"/></linearGradient>
+        <linearGradient id="wp3" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#2b2fb8" stop-opacity="0"/><stop offset=".55" stop-color="#5b4df0" stop-opacity=".8"/><stop offset="1" stop-color="#9b8cff"/></linearGradient>
+      </defs>
+      <path d="M0 0H300C250 70 130 130 0 165Z" fill="url(#wp1)"/>
+      <path d="M0 0H400C300 120 150 225 0 275Z" fill="url(#wp1)" opacity=".35"/>
+      <path d="M400 590C300 700 180 770 90 800H400Z" fill="url(#wp3)"/>
+      <path d="M400 590C300 700 180 770 90 800" fill="none" stroke="#b3a8ff" stroke-opacity=".75" stroke-width="2"/>
+      <path d="M0 700C90 690 190 740 290 800" fill="none" stroke="#6c6cff" stroke-opacity=".45" stroke-width="1.5"/>
+    </svg>
+
+    <svg class="circuit" viewBox="0 0 590 300" fill="none">
+      <g stroke="#5b52f0" stroke-opacity=".85" stroke-width="1.6" stroke-linejoin="round">
+        <path d="M100 101H282L338 45H450L505 -10"/>
+        <path d="M208 142H350L404 118H500L582 30"/>
+        <path d="M299 288L410 177H470L520 160H582"/>
+        <path d="M40 288H299" stroke-opacity=".45"/>
+      </g>
+      <g fill="#4a41e0">
+        <circle cx="100" cy="101" r="6.5"/><circle cx="208" cy="142" r="6.5"/><circle cx="411" cy="118" r="6.5"/><circle cx="299" cy="288" r="6.5"/>
+      </g>
+      <g fill="#8f86ff" fill-opacity=".35">
+        <circle cx="100" cy="101" r="11"/><circle cx="208" cy="142" r="11"/><circle cx="299" cy="288" r="11"/>
+      </g>
+    </svg>
+
+    <svg class="shield" viewBox="0 0 310 360" fill="none">
+      <path d="M155 12L298 62V176C298 252 232 308 155 348C78 308 12 252 12 176V62Z" fill="#8f86ff" fill-opacity=".10" stroke="#9a92ff" stroke-width="20" stroke-linejoin="round"/>
+      <path d="M92 182L136 226L222 126" stroke="#9a92ff" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+
+    <svg class="city" viewBox="0 0 900 330" preserveAspectRatio="xMinYMax meet">
+      <defs>
+        <linearGradient id="bld" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a52c8" stop-opacity=".6"/><stop offset="1" stop-color="#1a1a70" stop-opacity=".25"/></linearGradient>
+      </defs>
+      <g fill="url(#bld)"><rect x="-10" y="51" width="64" height="279"/><rect x="54" y="196" width="54" height="134"/><rect x="110" y="154" width="53" height="176"/><rect x="157" y="63" width="61" height="267"/><rect x="216" y="156" width="52" height="174"/><rect x="262" y="86" width="64" height="244"/><rect x="327" y="215" width="40" height="115"/><rect x="367" y="164" width="41" height="166"/><rect x="405" y="120" width="78" height="210"/><rect x="443" y="98" width="2" height="22"/><rect x="484" y="167" width="37" height="163"/><rect x="514" y="230" width="64" height="100"/><rect x="575" y="176" width="70" height="154"/><rect x="648" y="234" width="43" height="96"/><rect x="688" y="250" width="68" height="80"/><rect x="750" y="189" width="69" height="141"/><rect x="817" y="260" width="70" height="70"/><rect x="880" y="260" width="46" height="70"/></g>
+      <g fill="#a8b0ff" fill-opacity=".24"><rect x="-3" y="121" width="4" height="7"/><rect x="-3" y="201" width="4" height="7"/><rect x="-3" y="241" width="4" height="7"/><rect x="11" y="201" width="4" height="7"/><rect x="11" y="221" width="4" height="7"/><rect x="25" y="81" width="4" height="7"/><rect x="25" y="141" width="4" height="7"/><rect x="25" y="161" width="4" height="7"/><rect x="25" y="261" width="4" height="7"/><rect x="61" y="226" width="4" height="7"/><rect x="61" y="246" width="4" height="7"/><rect x="61" y="286" width="4" height="7"/><rect x="75" y="206" width="4" height="7"/><rect x="75" y="246" width="4" height="7"/><rect x="75" y="286" width="4" height="7"/><rect x="89" y="286" width="4" height="7"/><rect x="117" y="184" width="4" height="7"/><rect x="117" y="244" width="4" height="7"/><rect x="117" y="284" width="4" height="7"/><rect x="131" y="204" width="4" height="7"/><rect x="145" y="204" width="4" height="7"/><rect x="145" y="304" width="4" height="7"/><rect x="164" y="93" width="4" height="7"/><rect x="164" y="113" width="4" height="7"/><rect x="164" y="153" width="4" height="7"/><rect x="164" y="233" width="4" height="7"/><rect x="164" y="253" width="4" height="7"/><rect x="164" y="293" width="4" height="7"/><rect x="178" y="113" width="4" height="7"/><rect x="178" y="173" width="4" height="7"/><rect x="192" y="73" width="4" height="7"/><rect x="192" y="193" width="4" height="7"/><rect x="192" y="213" width="4" height="7"/><rect x="192" y="233" width="4" height="7"/><rect x="223" y="266" width="4" height="7"/><rect x="237" y="206" width="4" height="7"/><rect x="237" y="226" width="4" height="7"/><rect x="237" y="286" width="4" height="7"/><rect x="251" y="206" width="4" height="7"/><rect x="251" y="286" width="4" height="7"/><rect x="269" y="136" width="4" height="7"/><rect x="269" y="156" width="4" height="7"/><rect x="269" y="176" width="4" height="7"/><rect x="269" y="256" width="4" height="7"/><rect x="283" y="156" width="4" height="7"/><rect x="374" y="214" width="4" height="7"/><rect x="374" y="234" width="4" height="7"/><rect x="374" y="274" width="4" height="7"/><rect x="388" y="254" width="4" height="7"/><rect x="412" y="250" width="4" height="7"/><rect x="412" y="270" width="4" height="7"/><rect x="412" y="290" width="4" height="7"/><rect x="426" y="150" width="4" height="7"/><rect x="426" y="170" width="4" height="7"/><rect x="426" y="230" width="4" height="7"/><rect x="426" y="250" width="4" height="7"/><rect x="440" y="130" width="4" height="7"/><rect x="491" y="197" width="4" height="7"/><rect x="521" y="300" width="4" height="7"/><rect x="535" y="240" width="4" height="7"/><rect x="549" y="280" width="4" height="7"/><rect x="596" y="186" width="4" height="7"/><rect x="596" y="246" width="4" height="7"/><rect x="624" y="226" width="4" height="7"/><rect x="709" y="280" width="4" height="7"/><rect x="723" y="260" width="4" height="7"/><rect x="723" y="300" width="4" height="7"/><rect x="737" y="300" width="4" height="7"/><rect x="771" y="299" width="4" height="7"/><rect x="799" y="239" width="4" height="7"/><rect x="824" y="270" width="4" height="7"/><rect x="838" y="290" width="4" height="7"/><rect x="866" y="290" width="4" height="7"/></g>
+    </svg>
+  </div>
+
+  <main class="wrap">
+    <section class="card" aria-labelledby="portal-title">
+
+      <div class="brand">
+        <img class="logo" src="logo.png" alt="BANTAYO logo">
+        <h1 id="portal-title">BANTAYO Sign In</h1>
+        <p id="portal-subtitle" class="subtitle">Sign in to access your authorized dashboard</p>
+      </div>
+
+      <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+
+        <div id="username-field" class="field hidden">
+          <label for="username">Username</label>
+          <div class="input">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+            <input type="text" id="username" maxlength="20" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next" placeholder="e.g. juan_delacruz" onblur="checkUsernameAvailability()" oninput="clearUsernameHint()">
+          </div>
+          <p id="username-hint" class="hidden"></p>
+          <p class="help">3-20 characters: letters, numbers, underscore or dot (start and end with a letter or number). Each username is unique and is shown on your dashboard.</p>
+        </div>
+
+        <div class="field">
+          <label for="email">Email Address</label>
+          <div class="input">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>
+            <input type="email" id="email" required autocomplete="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next" placeholder="name@example.com">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="input">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg>
+            <input type="password" id="password" required minlength="6" autocomplete="current-password" enterkeyhint="go" placeholder="••••••••">
+            <button type="button" class="eye" id="password-toggle" onclick="togglePassword()" aria-label="Show password" aria-pressed="false">
+              <svg id="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 6.2A9.8 9.8 0 0 1 12 6c5 0 8.6 3.6 10 6-.6 1-1.5 2.2-2.8 3.3M6.6 7.6C4.6 8.9 3.1 10.6 2 12c1.4 2.4 5 6 10 6 1.4 0 2.7-.3 3.8-.7"/><path d="M9.9 10a3 3 0 0 0 4.1 4.1"/></svg>
+              <svg id="eye-on" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c1.4-2.4 5-6 10-6s8.6 3.6 10 6c-1.4 2.4-5 6-10 6S3.4 14.4 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="auth-btn" class="btn">
+          <svg id="btn-ico-in" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>
+          <svg id="btn-ico-reg" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="4"/><path d="M2.5 20c0-3.6 3.4-6 7.5-6"/><path d="M18 8v6M15 11h6"/></svg>
+          <span id="auth-btn-label">Sign In</span>
+        </button>
+      </form>
+
+      <div class="switch">
+        <p id="toggle-text">Don't have an account? <button type="button" onclick="toggleMode()">Register here</button></p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Firebase Compat SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <script>
+
+    // Firebase Auth & Routing
+    const firebaseConfig = {
+      apiKey: "AIzaSyC2WSefQ2Hs6S4AJBESDs4F5iJwPK7jVzU",
+      authDomain: "bantayoapplication.firebaseapp.com",
+      projectId: "bantayoapplication",
+      storageBucket: "bantayoapplication.firebasestorage.app",
+      messagingSenderId: "51777911890",
+      appId: "1:51777911890:web:0c876b31a75ab8c0f7338b",
+      measurementId: "G-5KJ7LE1KFF"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let isRegistering = false;
+
+    // ---------- Unique usernames ----------
+    // Each username is reserved as a document in the "usernames" collection (id = lowercase name),
+    // so "Juan_C" and "juan_c" count as the same name.
+    const USERNAME_RE = /^[A-Za-z0-9][A-Za-z0-9_.]{1,18}[A-Za-z0-9]$/;
+    const USERNAME_RULES_MSG = "Username must be 3-20 characters, use only letters, numbers, underscore (_) or dot (.), and start and end with a letter or number.";
+
+    function usernameKey(name) { return String(name).trim().toLowerCase(); }
+
+    // true = already taken, false = free, null = could not check (offline, or rules not published yet)
+    async function isUsernameTaken(name) {
+      try {
+        const snap = await db.collection('usernames').doc(usernameKey(name)).get();
+        return snap.exists;
+      } catch (err) {
+        console.warn('Username check skipped:', err);
+        return null;
+      }
+    }
+
+    // Reserve a username for a user. Runs as a transaction so two people can never get the same name.
+    async function claimUsername(name, uid) {
+      const ref = db.collection('usernames').doc(usernameKey(name));
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        if (snap.exists) {
+          const e = new Error('Username already taken');
+          e.code = 'username-taken';
+          throw e;
+        }
+        tx.set(ref, { uid: uid, username: name, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      });
+    }
+
+    function clearUsernameHint() {
+      const hint = document.getElementById('username-hint');
+      if (hint) { hint.classList.add('hidden'); hint.innerText = ''; }
+    }
+
+    async function checkUsernameAvailability() {
+      const hint = document.getElementById('username-hint');
+      const name = document.getElementById('username').value.trim();
+      if (!hint || !name) return;
+
+      const show = (msg, good) => {
+        hint.innerText = msg;
+        hint.className = 'hint ' + (good ? 'hint-good' : 'hint-bad');
+      };
+
+      if (!USERNAME_RE.test(name)) { show('✗ ' + USERNAME_RULES_MSG, false); return; }
+      const taken = await isUsernameTaken(name);
+      if (taken === true) show('✗ That username is already taken', false);
+      else if (taken === false) show('✓ Username is available', true);
+    }
+
+    function getRoleForEmail(email) {
+      return email.trim().toLowerCase().endsWith('@students.uc-bcf.edu.ph') ? 'official' : 'resident';
+    }
+
+    // Button label (keeps the icon inside the button)
+    function setAuthBtn(text) {
+      const label = document.getElementById('auth-btn-label');
+      if (label) label.innerText = text;
+    }
+
+    function togglePassword() {
+      const input = document.getElementById('password');
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      document.getElementById('eye-on').classList.toggle('hidden', !show);
+      document.getElementById('eye-off').classList.toggle('hidden', show);
+      const toggle = document.getElementById('password-toggle');
+      toggle.setAttribute('aria-pressed', show ? 'true' : 'false');
+      toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    }
+
+    function toggleMode() {
+      isRegistering = !isRegistering;
+      const title = document.getElementById('portal-title');
+      const subtitle = document.getElementById('portal-subtitle');
+      const toggleText = document.getElementById('toggle-text');
+      const usernameField = document.getElementById('username-field');
+      const usernameInput = document.getElementById('username');
+      const passwordInput = document.getElementById('password');
+      const iconIn = document.getElementById('btn-ico-in');
+      const iconReg = document.getElementById('btn-ico-reg');
+
+      usernameField.classList.toggle('hidden', !isRegistering);
+      usernameInput.required = isRegistering;
+      passwordInput.setAttribute('autocomplete', isRegistering ? 'new-password' : 'current-password');
+      if (iconIn) iconIn.classList.toggle('hidden', isRegistering);
+      if (iconReg) iconReg.classList.toggle('hidden', !isRegistering);
+      clearUsernameHint();
+
+      if (isRegistering) {
+        title.innerText = "Create Account";
+        subtitle.innerText = "Register to report or manage community hazards";
+        setAuthBtn("Register Account");
+        toggleText.innerHTML = `Already have an account? <button type="button" onclick="toggleMode()">Sign in here</button>`;
+      } else {
+        title.innerText = "BANTAYO Sign In";
+        subtitle.innerText = "Sign in to access your authorized dashboard";
+        setAuthBtn("Sign In");
+        toggleText.innerHTML = `Don't have an account? <button type="button" onclick="toggleMode()">Register here</button>`;
+      }
+    }
+
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const btn = document.getElementById('auth-btn');
+
+      btn.disabled = true;
+      setAuthBtn(isRegistering ? "Creating Account..." : "Signing In...");
+
+      const assignedRole = getRoleForEmail(email);
+
+      let username = '';
+      if (isRegistering) {
+        username = document.getElementById('username').value.trim();
+        if (!USERNAME_RE.test(username)) {
+          alert(USERNAME_RULES_MSG);
+          btn.disabled = false;
+          setAuthBtn("Register Account");
+          return;
+        }
+      }
+
+      try {
+        let uid;
+
+        if (isRegistering) {
+          // Friendly early check (skipped quietly if it cannot be read)
+          if (await isUsernameTaken(username) === true) {
+            alert("That username is already taken. Please choose another one.");
+            btn.disabled = false;
+            setAuthBtn("Register Account");
+            return;
+          }
+
+          const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+          uid = userCredential.user.uid;
+
+          // Reserve the username. If someone grabbed it a moment ago, undo the new account.
+          try {
+            await claimUsername(username, uid);
+          } catch (claimErr) {
+            try { await userCredential.user.delete(); } catch (delErr) { console.warn('Could not undo account:', delErr); }
+            throw claimErr;
+          }
+          // Save the username on the account itself so every page can read it instantly
+          try { await userCredential.user.updateProfile({ displayName: username }); }
+          catch (profileErr) { console.warn("Could not save display name:", profileErr); }
+        } else {
+          const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+          uid = userCredential.user.uid;
+        }
+
+        let finalRole = assignedRole;
+        try {
+          const userRef = db.collection("users").doc(uid);
+          const userDoc = await userRef.get();
+
+          if (!userDoc.exists) {
+            await userRef.set({
+              email: email,
+              username: username || (firebase.auth().currentUser && firebase.auth().currentUser.displayName) || '',
+              role: assignedRole,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          } else {
+            // Older accounts: fill in a username if they do not have one yet
+            const knownName = userDoc.data().username;
+            const accountName = firebase.auth().currentUser && firebase.auth().currentUser.displayName;
+            if (!knownName && accountName) {
+              await userRef.update({ username: accountName });
+            }
+            // Accounts made before usernames were unique: reserve their name now (ignored if already taken)
+            const nameToReserve = knownName || accountName;
+            if (nameToReserve) {
+              try { await claimUsername(nameToReserve, uid); } catch (reserveErr) { /* already reserved */ }
+            }
+            const dbRole = userDoc.data().role;
+            if (assignedRole === 'official' && dbRole !== 'official') {
+              await userRef.update({ role: 'official' });
+              finalRole = 'official';
+            } else {
+              finalRole = dbRole || assignedRole;
+            }
+          }
+        } catch (firestoreErr) {
+          console.warn("Firestore sync skipped:", firestoreErr);
+        }
+
+        if (finalRole === 'official') {
+          window.location.href = 'landing.html';
+        } else {
+          window.location.href = 'index.html';
+        }
+
+      } catch (err) {
+        if (isRegistering && err && err.code === 'auth/email-already-in-use') {
+          alert("That email is already registered. Please sign in instead.");
+        } else if (isRegistering && err && err.code === 'auth/weak-password') {
+          alert("Password is too weak. Use at least 6 characters.");
+        } else if (isRegistering && err && err.code === 'auth/invalid-email') {
+          alert("Please enter a valid email address.");
+        } else if (isRegistering && err && err.code === 'username-taken') {
+          alert("That username is already taken. Please choose another one.");
+        } else if (isRegistering && err && err.code === 'permission-denied') {
+          console.error('Username reservation blocked by Firestore rules:', err);
+          alert("Could not reserve your username. (Admin: publish the Firestore rule for the 'usernames' collection.)");
+        } else {
+          alert(isRegistering ? "Could not create the account. Please try again." : "Incorrect password or not registered account");
+        }
+        btn.disabled = false;
+        setAuthBtn(isRegistering ? "Register Account" : "Sign In");
+      }
+    }
+
+  </script>
+</body>
+</html>
