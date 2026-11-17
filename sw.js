@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bantayo-v7';
+const CACHE_NAME = 'bantayo-v10';
 
 // Your own pages and scripts: always try the network first so edits show up immediately,
 // and fall back to the saved copy when offline.
@@ -9,6 +9,7 @@ const LOCAL_ASSETS = [
   './landing.html',
   './resident-view.html',
   './app.js',
+  './baguio-map.js',
   './manifest.json'
 ];
 

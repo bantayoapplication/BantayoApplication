@@ -15,6 +15,7 @@
   <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="baguio-map.js"></script>
 </head>
 <body class="bg-slate-100 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100 font-sans flex flex-col transition-colors duration-300">
 
@@ -86,6 +87,7 @@
         <span class="text-[10px] text-slate-500 dark:text-slate-400">Read-Only Preview</span>
       </div>
       <div id="dummy-map" class="w-full flex-1 min-h-[320px] rounded-xl border border-slate-200 dark:border-slate-800 z-10"></div>
+      <button onclick="openDirections(16.416, 120.596, 'Sample Hazard Pin')" class="mt-3 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2.5 rounded-xl shadow cursor-pointer">🧭 Show the way to the sample pin</button>
     </div>
 
   </main>
@@ -112,11 +114,7 @@
 
     applyTheme(localStorage.getItem('bantayo-theme') || 'dark');
 
-    const dummyMap = L.map('dummy-map').setView([16.416, 120.596], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(dummyMap);
+    const dummyMap = createBaguioMap(document.getElementById('dummy-map'), { center: { lat: 16.416, lng: 120.596 }, zoom: 14 });
 
     L.marker([16.416, 120.596]).addTo(dummyMap).bindPopup("<b>Sample Hazard Pin</b><br>Baguio City Center");
   </script>

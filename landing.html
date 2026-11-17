@@ -16,6 +16,7 @@
   <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="baguio-map.js"></script>
 
   <!-- Firebase Compat SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -102,15 +103,11 @@
     </div>
 
     <div class="flex items-center gap-3">
-      <div class="hidden sm:flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 px-3 py-1.5 rounded-xl text-xs text-emerald-700 dark:text-emerald-400 font-medium">
-        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        Cloud Sync Active
-      </div>
+      <button onclick="openNotifPanel()" class="bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 text-xs font-semibold px-4 py-2 rounded-xl border border-amber-200 dark:border-amber-900/80 transition cursor-pointer">
+        🔔 Create Notification
+      </button>
       <button onclick="openUsersPanel()" class="bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-xs font-semibold px-4 py-2 rounded-xl border border-blue-200 dark:border-blue-900/80 transition cursor-pointer">
         👥 Users
-      </button>
-      <button onclick="switchToDummyResidentView()" class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 transition cursor-pointer">
-        Resident View (Dummy) ↗
       </button>
       <button onclick="handleOfficialLogout()" class="bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-400 text-xs font-semibold px-3.5 py-2 rounded-xl border border-rose-200 dark:border-rose-900/80 transition cursor-pointer">
         Sign Out
@@ -130,7 +127,6 @@
     <section class="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 flex flex-col shadow-md transition-colors duration-300">
       <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div class="flex items-center gap-2">
-          <i data-lucide="radio" class="w-5 h-5 text-blue-600 dark:text-blue-400"></i>
           <h2 class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">Incoming Hazard Reports</h2>
         </div>
         <span id="report-count" class="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 text-xs font-bold px-2.5 py-1 rounded-xl">0 Reports</span>
@@ -153,7 +149,6 @@
     <section class="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 flex flex-col shadow-md transition-colors duration-300">
       <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div class="flex items-center gap-2">
-          <i data-lucide="map" class="w-5 h-5 text-blue-600 dark:text-blue-400"></i>
           <h2 class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">Barangay Spatial Radar</h2>
         </div>
         <span class="text-xs text-slate-500 dark:text-slate-400">Live geographic coordinates of active hazards</span>
@@ -165,6 +160,65 @@
     </section>
 
   </main>
+
+  <!-- Delete a report: the barangay must give a reason, and the resident is notified -->
+  <div id="delete-overlay" class="hidden fixed inset-0 z-[2100] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4" onclick="closeDeletePanel()">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl w-full max-w-md" onclick="event.stopPropagation()">
+      <form onsubmit="confirmDeleteReport(event)" class="p-6 space-y-4">
+        <div>
+          <h2 class="text-sm font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">Delete report</h2>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">"<span id="delete-report-title" class="font-semibold text-slate-800 dark:text-slate-200"></span>" will be permanently removed. The resident who sent it will be notified with your reason.</p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Reason for deleting <span class="text-rose-500">*</span></label>
+          <div class="flex flex-wrap gap-1.5 mb-2">
+            <button type="button" onclick="setDeleteReason('Duplicate report')" class="text-[10px] font-semibold px-2.5 py-1 rounded-full border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300 cursor-pointer">Duplicate</button>
+            <button type="button" onclick="setDeleteReason('Not a hazard')" class="text-[10px] font-semibold px-2.5 py-1 rounded-full border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300 cursor-pointer">Not a hazard</button>
+            <button type="button" onclick="setDeleteReason('Wrong location')" class="text-[10px] font-semibold px-2.5 py-1 rounded-full border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300 cursor-pointer">Wrong location</button>
+            <button type="button" onclick="setDeleteReason('Unclear photo or details')" class="text-[10px] font-semibold px-2.5 py-1 rounded-full border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300 cursor-pointer">Unclear photo</button>
+          </div>
+          <textarea id="delete-reason" rows="3" maxlength="300" required placeholder="Tell the resident why this report was removed..." class="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white focus:border-blue-500 outline-none"></textarea>
+        </div>
+        <p id="delete-status" class="hidden text-[11px] font-semibold text-rose-600 dark:text-rose-400"></p>
+        <div class="flex gap-2">
+          <button type="button" onclick="closeDeletePanel()" class="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold py-3 rounded-xl border border-slate-300 dark:border-slate-700 cursor-pointer">Cancel</button>
+          <button id="delete-confirm" type="submit" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold py-3 rounded-xl shadow cursor-pointer">Delete &amp; Notify</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Create Notification: announcements that every resident sees in their Notifications screen -->
+  <div id="notif-overlay" class="hidden fixed inset-0 z-[2000] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4" onclick="closeNotifPanel()">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+      <div class="flex items-start justify-between p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <h2 class="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">🔔 Create Notification</h2>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Sent to every resident's Notifications screen.</p>
+        </div>
+        <button onclick="closeNotifPanel()" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer">✕</button>
+      </div>
+      <div class="p-6 pt-4 overflow-y-auto space-y-4">
+        <form onsubmit="sendAnnouncement(event)" class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Title</label>
+            <input id="notif-title" type="text" maxlength="80" required placeholder="e.g. Heavy rain advisory" class="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white focus:border-blue-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Message</label>
+            <textarea id="notif-message" rows="4" maxlength="500" required placeholder="What should residents know?" class="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white focus:border-blue-500 outline-none"></textarea>
+          </div>
+          <p id="notif-status" class="hidden text-[11px] font-semibold"></p>
+          <button id="notif-send" type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3 rounded-xl shadow cursor-pointer">Send Notification</button>
+        </form>
+
+        <div>
+          <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Recent notifications</h3>
+          <div id="notif-list" class="space-y-2"><p class="text-[11px] text-slate-400 italic">Loading...</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Users panel: every user with their Pending / In Progress / Resolved report counts -->
   <div id="users-overlay" class="hidden fixed inset-0 z-[2000] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4" onclick="closeUsersPanel()">
@@ -212,12 +266,7 @@
     applyTheme(localStorage.getItem('bantayo-theme') || 'dark');
 
     // Leaflet Map Setup
-    const map = L.map('map').setView([16.4023, 120.5960], 14);
-
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+    const map = createBaguioMap(document.getElementById('map'), { center: { lat: 16.4023, lng: 120.5960 }, zoom: 14 });
 
     setTimeout(() => { map.invalidateSize(); }, 250);
 
@@ -445,7 +494,7 @@
         visible.forEach((data) => {
           const reportId = data.id;
 
-          const categoryName = data.category || data.title || data.hazardType || "Hazard Incident";
+          const categoryName = data.title || data.category || data.hazardType || "Hazard Incident";
           const descriptionText = data.description || "No description provided.";
           const locationName = data.location ? `📍 ${data.location}` : '';
           
@@ -499,6 +548,7 @@
                   </div>
                 </div>
 
+                ${hasMapCoords(lat, lng) ? `<button onclick="openDirections(${Number(lat)}, ${Number(lng)}, '${esc(String(categoryName)).replace(/&#39;/g, '')}')" class="text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-blue-200 dark:border-blue-900/60 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/80 text-blue-700 dark:text-blue-300 transition cursor-pointer shadow-sm" title="Show the way">🧭 Directions</button>` : ''}
                 <button onclick="deleteReport('${reportId}')" class="text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/80 text-rose-700 dark:text-rose-300 transition cursor-pointer shadow-sm" title="Delete Report">
                   🗑️ Delete
                 </button>
@@ -507,12 +557,13 @@
           `;
           container.appendChild(card);
 
-          if (hasMapCoords(lat, lng)) {
+          if (hasMapCoords(lat, lng) && isInsideBaguio(lat, lng)) {
             const marker = L.marker([Number(lat), Number(lng)]).bindPopup(`
               <div style="color: #0f172a; font-family: sans-serif;">
                 <b>${categoryName}</b> (${currentStatus})<br>
                 ${descriptionText}<br>
                 <small>${timeDisplay}</small>
+                <button onclick="openDirections(${Number(lat)}, ${Number(lng)}, '${esc(String(categoryName)).replace(/&#39;/g, '')}')" style="display:block;width:100%;margin-top:6px;background:#2563eb;color:#fff;border:0;border-radius:8px;padding:6px 0;font-size:11px;font-weight:bold;cursor:pointer;">🧭 Show the way</button>
               </div>
             `);
             markersLayer.addLayer(marker);
@@ -539,25 +590,179 @@
 
     window.updateStatus = async function(id, newStatus) {
       try {
-        await db.collection("hazard_reports").doc(id).update({
-          status: newStatus
-        });
+        const changes = { status: newStatus };
+        // Remember when it was resolved so residents get a notification with the right time
+        changes.resolvedAt = newStatus === 'Resolved'
+          ? firebase.firestore.FieldValue.serverTimestamp()
+          : firebase.firestore.FieldValue.delete();
+        await db.collection("hazard_reports").doc(id).update(changes);
       } catch (err) {
         alert("Error updating status: " + err.message);
       }
     };
 
-    window.deleteReport = async function(id) {
-      if (confirm("Are you sure you want to permanently delete this hazard report?")) {
-        try {
-          await db.collection("hazard_reports").doc(id).delete();
-        } catch (err) {
-          alert("Error removing report: " + err.message);
+    // ---------- Deleting a report (needs a reason; the resident is notified) ----------
+    let deleteTargetId = null;
+
+    window.deleteReport = function(id) {
+      const r = allReports.find(x => x.id === id);
+      deleteTargetId = id;
+      document.getElementById('delete-report-title').innerText = r ? (r.title || r.category || 'this report') : 'this report';
+      document.getElementById('delete-reason').value = '';
+      document.getElementById('delete-status').classList.add('hidden');
+      document.getElementById('delete-overlay').classList.remove('hidden');
+      setTimeout(() => document.getElementById('delete-reason').focus(), 50);
+    };
+
+    function closeDeletePanel() {
+      document.getElementById('delete-overlay').classList.add('hidden');
+      deleteTargetId = null;
+    }
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDeletePanel(); });
+
+    function setDeleteReason(text) {
+      document.getElementById('delete-reason').value = text;
+    }
+
+    async function confirmDeleteReport(e) {
+      e.preventDefault();
+      const id = deleteTargetId;
+      const reason = document.getElementById('delete-reason').value.trim();
+      const btn = document.getElementById('delete-confirm');
+      const status = document.getElementById('delete-status');
+      if (!id || !reason) return;
+
+      const r = allReports.find(x => x.id === id) || {};
+      btn.disabled = true;
+      btn.innerText = 'Deleting...';
+      status.classList.add('hidden');
+
+      try {
+        // One batch: the notice and the delete happen together, or not at all
+        const batch = db.batch();
+        if (r.userId || r.userEmail) {
+          const user = firebase.auth().currentUser;
+          batch.set(db.collection('report_notices').doc(), {
+            userId: r.userId || '',
+            userEmail: r.userEmail || '',
+            reportId: id,
+            reportTitle: r.title || r.category || '',
+            reason: reason,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            deletedBy: user ? user.email : ''
+          });
         }
+        batch.delete(db.collection('hazard_reports').doc(id));
+        await batch.commit();
+        closeDeletePanel();
+      } catch (err) {
+        console.error('Delete failed:', err);
+        status.innerText = err && err.code === 'permission-denied'
+          ? 'Not allowed. Publish the Firestore rule for the "report_notices" collection, then try again.'
+          : 'Could not delete: ' + (err && err.message ? err.message : 'unknown error');
+        status.classList.remove('hidden');
+      }
+      btn.disabled = false;
+      btn.innerText = 'Delete & Notify';
+    }
+
+    // ---------- Notifications created by the barangay ----------
+    let announcementList = [];
+
+    function openNotifPanel() {
+      document.getElementById('notif-overlay').classList.remove('hidden');
+      setTimeout(() => { const t = document.getElementById('notif-title'); if (t) t.focus(); }, 50);
+    }
+    function closeNotifPanel() {
+      document.getElementById('notif-overlay').classList.add('hidden');
+    }
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeNotifPanel(); });
+
+    function showNotifStatus(message, good) {
+      const el = document.getElementById('notif-status');
+      el.innerText = message;
+      el.className = 'text-[11px] font-semibold ' + (good ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400');
+    }
+
+    async function sendAnnouncement(e) {
+      e.preventDefault();
+      const titleEl = document.getElementById('notif-title');
+      const messageEl = document.getElementById('notif-message');
+      const btn = document.getElementById('notif-send');
+      const title = titleEl.value.trim();
+      const message = messageEl.value.trim();
+      if (!title || !message) return;
+
+      btn.disabled = true;
+      btn.innerText = 'Sending...';
+      try {
+        const user = firebase.auth().currentUser;
+        await db.collection('announcements').add({
+          title: title,
+          message: message,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          createdBy: user ? user.email : ''
+        });
+        titleEl.value = '';
+        messageEl.value = '';
+        showNotifStatus('✓ Notification sent to all residents.', true);
+      } catch (err) {
+        console.error('Could not send notification:', err);
+        showNotifStatus(
+          err && err.code === 'permission-denied'
+            ? 'Not allowed yet. Publish the Firestore rule for the "announcements" collection.'
+            : 'Could not send: ' + (err && err.message ? err.message : 'unknown error'),
+          false
+        );
+      }
+      btn.disabled = false;
+      btn.innerText = 'Send Notification';
+    }
+
+    function renderAnnouncementList() {
+      const box = document.getElementById('notif-list');
+      if (!box) return;
+      if (announcementList.length === 0) {
+        box.innerHTML = '<p class="text-[11px] text-slate-400 italic">No notifications sent yet.</p>';
+        return;
+      }
+      box.innerHTML = announcementList.map(a => {
+        const ms = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+        const when = ms ? new Date(ms).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Sending...';
+        return `
+          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+            <div class="flex items-start justify-between gap-2">
+              <p class="text-xs font-bold text-slate-900 dark:text-white">${esc(a.title)}</p>
+              <button onclick="deleteAnnouncement('${esc(a.id)}')" class="text-[10px] font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer flex-shrink-0">Delete</button>
+            </div>
+            <p class="text-[11px] text-slate-600 dark:text-slate-300 mt-1">${esc(a.message)}</p>
+            <p class="text-[10px] text-slate-400 mt-1">${esc(when)}</p>
+          </div>`;
+      }).join('');
+    }
+
+    function loadAnnouncements() {
+      db.collection('announcements').orderBy('createdAt', 'desc').limit(20).onSnapshot((snap) => {
+        announcementList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderAnnouncementList();
+      }, (err) => {
+        console.warn('Announcements could not be loaded:', err);
+        const box = document.getElementById('notif-list');
+        if (box) box.innerHTML = '<p class="text-[11px] text-amber-700 dark:text-amber-400">Could not load notifications. Publish the Firestore rule for the "announcements" collection.</p>';
+      });
+    }
+
+    window.deleteAnnouncement = async function(id) {
+      if (!confirm('Delete this notification for all residents?')) return;
+      try {
+        await db.collection('announcements').doc(id).delete();
+      } catch (err) {
+        alert('Error deleting notification: ' + err.message);
       }
     };
 
     loadReports();
+    loadAnnouncements();
   </script>
 </body>
 </html>
