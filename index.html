@@ -9,14 +9,7 @@
   <!-- Tailwind CSS CDN with Class-based Dark Mode -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    // Re-colour Tailwind's slate/blue into the BANTAYO navy + indigo palette so every screen matches
-    tailwind.config = {
-      darkMode: 'class',
-      theme: { extend: { colors: {
-        slate: { 50:'#f3f2ff',100:'#e6e4fb',200:'#cfccf0',300:'#b3afe0',400:'#9a96cc',500:'#7f7bb3',600:'#5f5b94',700:'#3a3680',800:'#241f5a',900:'#15123d',950:'#0a0824' },
-        blue:  { 50:'#f1efff',100:'#e3dfff',200:'#c9c2ff',300:'#ab9fff',400:'#9484ff',500:'#7b69fb',600:'#6556f0',700:'#5243d6',800:'#3f34a8',900:'#2f2780',950:'#1b1650' }
-      } } }
-    }
+    tailwind.config = { darkMode: 'class' }
   </script>
 
   <!-- Leaflet GIS Map CSS -->
@@ -37,171 +30,34 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#020617">
 
-  <!-- BANTAYO resident dashboard styles -->
+  <!-- Layout fix: use the real visible height (dvh) and keep clear of system bars -->
   <style>
     html, body { height: 100%; margin: 0; }
-    body { height: 100vh; height: 100dvh; background: #070520; -webkit-tap-highlight-color: transparent; }
-    #app-content, .dash { -webkit-overflow-scrolling: touch; }
-
-    /* Background: deep navy with indigo glow + waves */
-    .bg-scene { position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background:
-        radial-gradient(900px 500px at 8% -5%, rgba(110,90,255,.35), transparent 60%),
-        radial-gradient(700px 500px at 100% 100%, rgba(90,70,230,.30), transparent 60%),
-        linear-gradient(180deg, #0b0828 0%, #090620 60%, #0d0a30 100%); }
-    .bg-scene svg { position: absolute; left: 0; bottom: 0; width: 100%; height: 22%; opacity: .9; }
-
-    .shell { position: relative; z-index: 1; }
-    header.app-header { padding-top: calc(0.6rem + env(safe-area-inset-top, 0px));
-      background: rgba(12,9,40,.72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-      border-bottom: 1px solid rgba(139,124,255,.18); }
-    main#app-content { margin-left: 24px; padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); }
-
-    /* ---------- Foldable navigation ---------- */
-    #nav-handle { position: fixed; top: 50%; left: 0; transform: translateY(-50%); z-index: 3100;
-      width: 24px; height: 64px; border-radius: 0 14px 14px 0; border: 1px solid rgba(139,124,255,.55); border-left: 0;
-      background: linear-gradient(135deg, #5b4bf0, #8b7cff); color: #fff; display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 6px 20px rgba(91,75,240,.45); cursor: pointer; transition: left .32s cubic-bezier(.4,0,.2,1); padding: 0; }
-    #nav-handle svg { width: 18px; height: 18px; transition: transform .32s; }
-    body.nav-open #nav-handle { left: min(17rem, 82vw); }
-    body.nav-open #nav-handle svg { transform: rotate(180deg); }
-
-    #nav-panel { position: fixed; top: 0; bottom: 0; left: 0; width: min(17rem, 82vw); z-index: 3050;
-      transform: translateX(-102%); transition: transform .32s cubic-bezier(.4,0,.2,1);
-      background: linear-gradient(180deg, #16124a 0%, #0f0b36 60%, #120d40 100%);
-      border-right: 1px solid rgba(139,124,255,.25); box-shadow: 12px 0 40px rgba(0,0,0,.5);
-      display: flex; flex-direction: column; overflow-y: auto;
-      padding: calc(1.25rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px)); visibility: hidden; }
-    body.nav-open #nav-panel { transform: translateX(0); visibility: visible; }
-    #nav-backdrop { position: fixed; inset: 0; z-index: 3000; background: rgba(3,2,20,.6); opacity: 0; pointer-events: none; transition: opacity .3s; }
-    body.nav-open #nav-backdrop { opacity: 1; pointer-events: auto; }
-
-    .nav-brand { text-align: center; margin-bottom: 1.25rem; }
-    .nav-brand img { width: 84px; height: 84px; object-fit: contain; border-radius: 22px; background: #fff; padding: 4px; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
-    .nav-brand b { display: block; margin-top: .6rem; font-size: 1.35rem; letter-spacing: .02em; color: #fff; font-weight: 800; }
-    .nav-brand small { color: #b9b3ee; font-size: .7rem; }
-    .nav-btn { display: flex; align-items: center; gap: .9rem; width: 100%; padding: .8rem 1rem; margin-bottom: .35rem; border-radius: 14px;
-      color: #c9c5f3; font-size: .95rem; font-weight: 500; background: transparent; border: 1px solid transparent; cursor: pointer; text-align: left; transition: background .2s, color .2s; }
-    .nav-btn:hover { background: rgba(139,124,255,.12); color: #fff; }
-    .nav-btn.nav-active { color: #fff; background: linear-gradient(90deg, #5a49ee, #7a68fb); border-color: rgba(190,180,255,.4); box-shadow: 0 6px 20px rgba(90,73,238,.4); }
-    .nav-btn svg { width: 22px; height: 22px; flex-shrink: 0; }
-    .nav-foot { margin-top: auto; padding-top: 1rem; text-align: center; color: #a9a4e0; font-style: italic; font-size: .8rem; }
-
-    /* ---------- Dashboard ---------- */
-    .hero { position: relative; overflow: hidden; border-radius: 26px; min-height: 170px; border: 1px solid rgba(160,145,255,.35); box-shadow: 0 14px 40px rgba(20,10,90,.5); }
-    .hero-art { position: absolute; inset: 0; width: 100%; height: 100%; }
-    .hero-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,6,40,.78) 0%, rgba(10,6,40,.25) 55%, rgba(10,6,40,0) 100%); }
-    .hero-text { position: relative; padding: 2rem 1.5rem; }
-    .hero-title { font-size: clamp(1.5rem, 5vw, 2.4rem); font-weight: 800; color: #fff; line-height: 1.1; word-break: break-word; max-width: 80%; }
-    .hero-sub { margin-top: .4rem; color: #e1dcff; font-size: clamp(.95rem, 2.6vw, 1.2rem); }
-    .hero-bar { display: block; width: 84px; height: 5px; border-radius: 9px; margin-top: 1rem; background: linear-gradient(90deg, #6a58f5, #a395ff); }
-    .hero-shield { position: absolute; right: 7%; top: 50%; transform: translateY(-50%); width: clamp(64px, 14vw, 140px); filter: drop-shadow(0 6px 18px rgba(80,60,220,.6)); }
-
-    .qa { display: flex; align-items: center; gap: .8rem; padding: 1rem 1.1rem; border-radius: 18px; color: #e6e3ff; font-weight: 600; font-size: 1rem;
-      background: rgba(30,24,86,.65); border: 1px solid rgba(139,124,255,.3); cursor: pointer; transition: transform .15s, background .2s; min-height: 56px; }
-    .qa:hover { transform: translateY(-2px); background: rgba(48,40,120,.75); }
-    .qa-primary { background: linear-gradient(90deg, #5a49ee, #8573fd); border-color: rgba(200,190,255,.45); color: #fff; box-shadow: 0 10px 28px rgba(90,73,238,.45); }
-
-    .stat { position: relative; overflow: hidden; display: flex; align-items: center; gap: .6rem; padding: .9rem .8rem 1.4rem; border-radius: 20px; border: 1px solid rgba(139,124,255,.25); min-height: 96px; }
-    .stat-warn { background: linear-gradient(135deg, rgba(120,80,10,.55), rgba(24,18,70,.85)); border-color: rgba(245,183,59,.3); }
-    .stat-prog { background: linear-gradient(135deg, rgba(10,100,70,.55), rgba(18,18,60,.9)); border-color: rgba(47,208,138,.3); }
-    .stat-done { background: linear-gradient(135deg, rgba(70,50,190,.55), rgba(20,16,70,.9)); border-color: rgba(139,124,255,.4); }
-    .stat-ico { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; }
-    .stat-warn .stat-ico { background: transparent; color: #f5b73b; }
-    .stat-prog .stat-ico { background: #14a971; }
-    .stat-done .stat-ico { background: #6c5cf3; }
-    .stat-num { font-size: clamp(1.6rem, 5vw, 2.4rem); font-weight: 800; color: #fff; line-height: 1; }
-    .stat-lbl { font-size: clamp(.62rem, 2vw, .85rem); color: #e1dcff; margin-top: .2rem; }
-    .spark { position: absolute; right: 0; bottom: 0; width: 55%; height: 34%; opacity: .85; }
-    @media (max-width: 420px) { .stat { flex-direction: column; align-items: flex-start; } .stat-ico { width: 34px; height: 34px; } }
-
-    .panel { border-radius: 22px; padding: 1.1rem; background: rgba(24,19,74,.6); border: 1px solid rgba(139,124,255,.25); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-    .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: .8rem; }
-    .panel-head h3 { color: #fff; font-weight: 700; font-size: 1.1rem; }
-    .link-btn { display: inline-flex; align-items: center; gap: .3rem; color: #a99dff; font-weight: 600; font-size: .85rem; background: none; border: 0; cursor: pointer; }
-    .link-btn:hover { color: #d2cbff; }
-    .badge { background: #ef3f55; color: #fff; font-size: .7rem; font-weight: 700; border-radius: 999px; padding: .1rem .5rem; }
-    .empty { text-align: center; padding: 1.6rem .5rem; color: #9a96cc; font-style: italic; font-size: .85rem; }
-    .empty .link-btn { margin-top: .5rem; font-style: normal; }
-
-    .rep { display: flex; align-items: center; gap: .9rem; padding: .7rem; border-radius: 16px; background: rgba(12,9,45,.55); border: 1px solid rgba(139,124,255,.18); margin-bottom: .6rem; }
-    .rep img { width: 78px; height: 78px; border-radius: 12px; object-fit: cover; flex-shrink: 0; border: 1px solid rgba(139,124,255,.25); }
-    .rep-title { color: #fff; font-weight: 600; font-size: .98rem; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-    .rep-meta { color: #b3afe0; font-size: .74rem; margin-top: .2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .chip { display: inline-block; font-size: .72rem; font-weight: 600; padding: .12rem .65rem; border-radius: 999px; color: #fff; }
-    .chip-pending { background: #6a58f5; } .chip-progress { background: #14a971; } .chip-resolved { background: #4a3fb5; border: 1px solid #8b7cff; }
-
-    .alert-row { display: flex; gap: .8rem; padding: .75rem 0; border-top: 1px solid rgba(139,124,255,.15); }
-    .alert-row:first-of-type { border-top: 0; }
-    .alert-ico { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; }
-    .alert-red { background: #ef3f55; } .alert-blue { background: #2f7bff; }
-    .alert-title { color: #fff; font-weight: 600; font-size: .88rem; }
-    .alert-time { color: #a9a4e0; font-size: .72rem; white-space: nowrap; }
-    .alert-desc { color: #b3afe0; font-size: .78rem; margin-top: .15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-    .status-bar { display: flex; align-items: center; justify-content: space-around; gap: 1rem; flex-wrap: wrap; }
-    .status-sep { width: 1px; align-self: stretch; background: rgba(139,124,255,.25); }
-    .status-lbl { color: #c9c5f3; font-size: .85rem; }
-    .status-val { font-weight: 700; font-size: 1.25rem; display: flex; align-items: center; gap: .45rem; }
-    .status-val .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-    .status-val.is-on { color: #4ee08f; } .status-val.is-on .dot { background: #4ee08f; box-shadow: 0 0 10px #4ee08f; }
-    .status-val.is-off { color: #ff6b7d; } .status-val.is-off .dot { background: #ff6b7d; }
-    .status-time { color: #e6e3ff; font-size: .95rem; }
-
-    /* Leaflet + form fields sit nicely on the navy theme */
-    input, select, textarea { color-scheme: dark; }
-    input, select, textarea { font-size: 16px; }
+    body { height: 100vh; height: 100dvh; }
+    header.app-header { padding-top: calc(0.75rem + env(safe-area-inset-top, 0px)); }
+    nav.app-nav { padding-bottom: calc(0.625rem + env(safe-area-inset-bottom, 0px)); }
   </style>
 </head>
-<body class="h-full w-full overflow-hidden flex flex-col font-sans text-slate-100">
+<body class="bg-slate-100 dark:bg-slate-950 h-full w-full overflow-hidden flex flex-col font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
 
-<!-- Background scene -->
-<div class="bg-scene" aria-hidden="true">
-  <svg viewBox="0 0 1200 240" preserveAspectRatio="none">
-    <defs><linearGradient id="bw1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3a2fb8" stop-opacity=".0"/><stop offset=".5" stop-color="#6a58f5" stop-opacity=".55"/><stop offset="1" stop-color="#8b7cff" stop-opacity=".7"/></linearGradient></defs>
-    <path d="M0 200 C200 120 380 250 600 190 S980 120 1200 190 V240 H0Z" fill="url(#bw1)"/>
-    <path d="M0 225 C220 170 420 240 640 215 S1000 170 1200 215 V240 H0Z" fill="#3a2fb8" fill-opacity=".45"/>
-  </svg>
-</div>
+<!-- Full-Screen Responsive Container -->
+<div class="w-full h-full flex flex-col justify-between overflow-hidden relative bg-slate-100 dark:bg-slate-950 transition-colors duration-300">
 
-<!-- Foldable navigation: opens only when the arrow is pressed -->
-<div id="nav-backdrop" onclick="closeNav()"></div>
-<button id="nav-handle" onclick="toggleNav()" aria-label="Open or close the menu" aria-expanded="false" title="Menu">
-  <i data-lucide="chevron-right"></i>
-</button>
-<aside id="nav-panel" aria-label="Main menu">
-  <div class="nav-brand">
-    <img src="https://i.ibb.co/3R2011g/bantayo-logo.png" alt="BANTAYO logo" />
-    <b>BANTAYO</b>
-    <small>Be Aware. Stay Safe.</small>
-  </div>
-  <button onclick="switchTab('home')" data-tab="home" class="nav-btn nav-active"><i data-lucide="home"></i><span>Home</span></button>
-  <button onclick="switchTab('submit')" data-tab="submit" class="nav-btn"><i data-lucide="alert-triangle"></i><span>Report</span></button>
-  <button onclick="switchTab('map')" data-tab="map" class="nav-btn"><i data-lucide="map-pin"></i><span>GIS Map</span></button>
-  <button onclick="switchTab('reports')" data-tab="reports" class="nav-btn"><i data-lucide="file-text"></i><span>Feed</span></button>
-  <button onclick="switchTab('profile')" data-tab="profile" class="nav-btn"><i data-lucide="user"></i><span>Profile</span></button>
-  <div class="nav-foot">A safer community,<br>together.</div>
-</aside>
-
-<!-- Full-screen container -->
-<div class="shell w-full h-full flex flex-col overflow-hidden">
-
-  <!-- Top bar -->
-  <header class="app-header px-4 md:px-6 pb-2.5 flex justify-between items-center flex-shrink-0 z-20">
-    <div class="flex items-center gap-3 min-w-0">
-      <img src="https://i.ibb.co/3R2011g/bantayo-logo.png" alt="BANTAYO" class="w-9 h-9 object-contain rounded-xl bg-white p-0.5 shadow" />
-      <h1 class="text-base font-extrabold tracking-wide text-white truncate">BANTAYO <span class="hidden sm:inline text-[10px] font-normal text-slate-400">Be Aware. Stay Safe.</span></h1>
+  <!-- Header -->
+  <header class="app-header bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white px-6 py-3 flex justify-between items-center shadow-sm z-25 flex-shrink-0 transition-colors duration-300">
+    <div class="flex items-center space-x-3">
+      <img src="https://i.ibb.co/3R2011g/bantayo-logo.png" alt="BANTAYO Logo" class="w-9 h-9 object-contain rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-950" />
+      <h1 class="text-base font-extrabold tracking-wide text-slate-900 dark:text-white">BANTAYO <span class="text-[10px] font-normal text-slate-500 dark:text-slate-400">Baguio GIS PWA</span></h1>
     </div>
-    <div class="flex items-center gap-3">
-      <button id="pwa-install-btn" class="hidden bg-amber-400 text-slate-950 text-[10px] font-bold px-2.5 py-1 rounded-lg shadow cursor-pointer">📲 Install</button>
-      <span id="role-badge" class="hidden sm:inline text-[10px] bg-indigo-500/20 text-indigo-200 border border-indigo-400/40 px-2.5 py-1 rounded-md font-semibold">Resident</span>
-      <button onclick="switchTab('home'); setTimeout(function(){var a=document.getElementById('alerts-panel'); if(a) a.scrollIntoView({behavior:'smooth',block:'center'});},60)" class="relative p-1.5 text-indigo-100 cursor-pointer" aria-label="Alerts" title="Alerts">
-        <i data-lucide="bell" class="w-6 h-6"></i>
-        <span id="bell-dot" class="hidden absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+    <div class="flex items-center space-x-2.5">
+      <button id="pwa-install-btn" class="hidden bg-amber-400 text-slate-950 text-[10px] font-bold px-2.5 py-1 rounded-lg shadow cursor-pointer">
+        📲 Install PWA
       </button>
-      <button onclick="switchTab('profile')" class="flex items-center gap-1.5 cursor-pointer" aria-label="Profile" title="Profile">
-        <span id="avatar" class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-300 to-indigo-600 text-white text-sm font-black flex items-center justify-center border-2 border-indigo-200/60 shadow">?</span>
-        <i data-lucide="chevron-down" class="w-4 h-4 text-indigo-200 hidden sm:block"></i>
+      <span id="role-badge" class="text-[10px] bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 px-2.5 py-1 rounded-md font-semibold">Resident</span>
+      
+      <!-- Sun / Moon Theme Toggle Button -->
+      <button onclick="toggleTheme()" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-amber-400 hover:scale-105 transition cursor-pointer" title="Toggle Light / Dark Mode">
+        <i id="theme-icon" data-lucide="sun" class="w-4 h-4"></i>
       </button>
     </div>
   </header>
@@ -212,7 +68,34 @@
   </div>
 
   <!-- Main Dynamic Screen Content Area -->
-  <main id="app-content" class="flex-1 flex flex-col overflow-y-auto relative p-4"></main>
+  <main id="app-content" class="flex-1 flex flex-col overflow-y-auto relative p-4">
+    <!-- Dynamically managed by app.js -->
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="app-nav bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 py-2.5 px-6 flex justify-around md:justify-center md:space-x-16 items-center z-25 shadow-lg flex-shrink-0 transition-colors duration-300">
+    <button onclick="switchTab('home')" data-tab="home" class="nav-btn flex flex-col items-center text-blue-600 dark:text-blue-400 transition hover:scale-105 cursor-pointer">
+      <i data-lucide="home" class="w-5 h-5"></i>
+      <span class="text-[10px] font-semibold mt-0.5">Home</span>
+    </button>
+    <button onclick="switchTab('submit')" data-tab="submit" class="nav-btn flex flex-col items-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition hover:scale-105 cursor-pointer">
+      <i data-lucide="plus-circle" class="w-5 h-5"></i>
+      <span class="text-[10px] font-semibold mt-0.5">Report</span>
+    </button>
+    <button onclick="switchTab('map')" data-tab="map" class="nav-btn flex flex-col items-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition hover:scale-105 cursor-pointer">
+      <i data-lucide="map" class="w-5 h-5"></i>
+      <span class="text-[10px] font-semibold mt-0.5">GIS Map</span>
+    </button>
+    <button onclick="switchTab('reports')" data-tab="reports" class="nav-btn flex flex-col items-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition hover:scale-105 cursor-pointer">
+      <i data-lucide="file-text" class="w-5 h-5"></i>
+      <span class="text-[10px] font-semibold mt-0.5">Feed</span>
+    </button>
+    <button onclick="switchTab('profile')" data-tab="profile" class="nav-btn flex flex-col items-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition hover:scale-105 cursor-pointer">
+      <i data-lucide="user" class="w-5 h-5"></i>
+      <span class="text-[10px] font-semibold mt-0.5">Profile</span>
+    </button>
+  </nav>
+
 </div>
 
 <!-- Firebase SDKs (Compat Version) -->
@@ -227,31 +110,32 @@
 <script src="app.js"></script>
 
 <script>
-  // The BANTAYO design is dark navy / indigo
-  document.documentElement.classList.add('dark');
-  if (typeof lucide !== 'undefined') lucide.createIcons();
-
-  // Foldable navigation
-  function setNav(open) {
-    document.body.classList.toggle('nav-open', open);
-    var h = document.getElementById('nav-handle');
-    if (h) h.setAttribute('aria-expanded', open ? 'true' : 'false');
+  // Theme Switcher
+  function applyTheme(theme) {
+    const html = document.documentElement;
+    const icon = document.getElementById('theme-icon');
+    if (theme === 'light') {
+      html.classList.remove('dark');
+      if (icon) icon.setAttribute('data-lucide', 'moon');
+    } else {
+      html.classList.add('dark');
+      if (icon) icon.setAttribute('data-lucide', 'sun');
+    }
+    localStorage.setItem('bantayo-theme', theme);
+    if (typeof lucide !== 'undefined') lucide.createIcons();
   }
-  function toggleNav() { setNav(!document.body.classList.contains('nav-open')); }
-  function closeNav() { setNav(false); }
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeNav(); });
 
-  function paintAvatar(user) {
-    var el = document.getElementById('avatar');
-    if (el) el.textContent = (typeof getDisplayName === 'function' ? getDisplayName(user) : 'R').substring(0, 2).toUpperCase();
+  function toggleTheme() {
+    const isDark = document.documentElement.classList.contains('dark');
+    applyTheme(isDark ? 'light' : 'dark');
   }
+
+  applyTheme(localStorage.getItem('bantayo-theme') || 'dark');
 
   // ROUTE GUARD
   firebase.auth().onAuthStateChanged((user) => {
     if (!user) {
       window.location.href = 'login.html';
-    } else {
-      paintAvatar(user);
     }
   });
 

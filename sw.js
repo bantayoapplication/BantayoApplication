@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bantayo-v8';
+const CACHE_NAME = 'bantayo-v7';
 
 // Your own pages and scripts: always try the network first so edits show up immediately,
 // and fall back to the saved copy when offline.

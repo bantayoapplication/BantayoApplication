@@ -27,7 +27,6 @@ let hazardMapInstance = null;
 
 let reports = [];
 let myReports = [];
-let currentTab = 'home';
 
 // Initialize Application & Real-time Database Listener
 document.addEventListener('DOMContentLoaded', () => {
@@ -67,7 +66,7 @@ function initCloudReportsSync() {
     filterPersonalReports();
     
     const content = document.getElementById('app-content');
-    const activeTab = currentTab;
+    const activeTab = document.querySelector('.nav-btn.text-blue-900, .nav-btn.text-blue-500, .nav-btn.text-blue-600')?.dataset.tab;
     if (activeTab === 'home') renderHome(content);
     else if (activeTab === 'map') renderMap(content);
     else if (activeTab === 'reports') renderReports(content);
@@ -81,7 +80,7 @@ firebase.auth().onAuthStateChanged((user) => {
   if (user) {
     filterPersonalReports();
     const content = document.getElementById('app-content');
-    const activeTab = currentTab;
+    const activeTab = document.querySelector('.nav-btn.text-blue-900, .nav-btn.text-blue-500, .nav-btn.text-blue-600')?.dataset.tab;
     if (content && (!activeTab || activeTab === 'home')) {
       renderHome(content);
     }
@@ -107,10 +106,7 @@ function listenPWAInstall() {
 
 function listenOnlineStatus() {
   const banner = document.getElementById('offline-banner');
-  const update = () => {
-    navigator.onLine ? banner.classList.add('hidden') : banner.classList.remove('hidden');
-    if (currentTab === 'home') renderHome(document.getElementById('app-content'));
-  };
+  const update = () => navigator.onLine ? banner.classList.add('hidden') : banner.classList.remove('hidden');
   window.addEventListener('online', update);
   window.addEventListener('offline', update);
   update();
@@ -121,11 +117,15 @@ function switchTab(tab) {
   const content = document.getElementById('app-content');
   stopWebcamStream();
 
-  currentTab = tab;
   document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.classList.toggle('nav-active', btn.dataset.tab === tab);
+    if (btn.dataset.tab === tab) {
+      btn.classList.add('text-blue-600', 'dark:text-blue-400');
+      btn.classList.remove('text-slate-500', 'dark:text-slate-400');
+    } else {
+      btn.classList.remove('text-blue-600', 'dark:text-blue-400');
+      btn.classList.add('text-slate-500', 'dark:text-slate-400');
+    }
   });
-  if (typeof closeNav === 'function') closeNav();
 
   if (tab === 'home') renderHome(content);
   else if (tab === 'submit') renderSubmit(content);
@@ -154,188 +154,98 @@ function compressBase64(base64Str, maxWidth = 600, quality = 0.6) {
   });
 }
 
-// ---------- Resident dashboard helpers ----------
-function escHtml(s) {
-  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-function reportDate(r) {
-  try {
-    const d = r.createdAt && r.createdAt.toDate ? r.createdAt.toDate() : (r.createdAt ? new Date(r.createdAt) : null);
-    return d && !isNaN(d) ? d : null;
-  } catch (e) { return null; }
-}
-
-function fmtReportDate(r) {
-  const d = reportDate(r);
-  if (!d) return 'Just now';
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' • ' +
-         d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-}
-
-function timeAgo(r) {
-  const d = reportDate(r);
-  if (!d) return 'just now';
-  const m = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));
-  if (m < 1) return 'just now';
-  if (m < 60) return m + 'm ago';
-  const h = Math.round(m / 60);
-  if (h < 24) return h + 'h ago';
-  return Math.round(h / 24) + 'd ago';
-}
-
-function statusChip(status) {
-  const s = status || 'Pending';
-  const cls = s === 'Pending' ? 'chip-pending' : s === 'In Progress' ? 'chip-progress' : 'chip-resolved';
-  return `<span class="chip ${cls}">${escHtml(s)}</span>`;
-}
-
 // Screen 1: Personalized Resident Home Dashboard
 function renderHome(container) {
   if (!container) return;
-  container.className = "flex-1 overflow-y-auto p-4 md:p-6";
+  container.className = "flex-1 overflow-y-auto p-4 md:p-8";
 
   filterPersonalReports();
 
   const user = firebase.auth().currentUser;
   const displayName = getDisplayName(user);
+  const userEmail = user ? user.email : '';
 
   const pendingCount = myReports.filter(r => (r.status || 'Pending') === 'Pending').length;
   const inProgressCount = myReports.filter(r => r.status === 'In Progress').length;
   const resolvedCount = myReports.filter(r => r.status === 'Resolved').length;
 
-  const recent = myReports.slice(0, 3);
-  // Alerts = the newest unresolved reports from the whole community (real data)
-  const alerts = reports.filter(r => (r.status || 'Pending') !== 'Resolved').slice(0, 3);
-  const online = navigator.onLine;
-
   container.innerHTML = `
-    <div class="dash max-w-6xl mx-auto w-full space-y-4 md:space-y-5">
-
-      <!-- Hero -->
-      <section class="hero">
-        <svg class="hero-art" viewBox="0 0 800 260" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
-          <defs>
-            <linearGradient id="hg-sky" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#2a1f6b"/><stop offset=".55" stop-color="#6b4fc9"/><stop offset="1" stop-color="#a587e8"/>
-            </linearGradient>
-            <linearGradient id="hg-m1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b2d8a"/><stop offset="1" stop-color="#1b1450"/></linearGradient>
-            <linearGradient id="hg-m2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#241a66"/><stop offset="1" stop-color="#0e0a33"/></linearGradient>
-          </defs>
-          <rect width="800" height="260" fill="url(#hg-sky)"/>
-          <ellipse cx="560" cy="140" rx="260" ry="38" fill="#c9b6ff" opacity=".18"/>
-          <path d="M0 190 L120 120 L190 160 L300 70 L420 165 L520 105 L640 175 L760 120 L800 150 L800 260 L0 260Z" fill="url(#hg-m1)"/>
-          <path d="M0 225 L90 180 L200 215 L330 165 L470 220 L600 185 L720 220 L800 195 L800 260 L0 260Z" fill="url(#hg-m2)"/>
-          <g fill="#0a0726" opacity=".9">
-            <path d="M40 260 L52 215 L64 260Z"/><path d="M70 260 L84 200 L98 260Z"/><path d="M110 260 L120 222 L130 260Z"/>
-            <path d="M700 260 L714 205 L728 260Z"/><path d="M735 260 L746 218 L757 260Z"/><path d="M768 260 L782 200 L796 260Z"/>
-          </g>
-          <g fill="#ffd98a" opacity=".85">
-            <rect x="380" y="228" width="3" height="3"/><rect x="396" y="222" width="3" height="3"/><rect x="412" y="232" width="3" height="3"/>
-            <rect x="430" y="226" width="3" height="3"/><rect x="448" y="234" width="3" height="3"/><rect x="466" y="224" width="3" height="3"/>
-            <rect x="486" y="230" width="3" height="3"/><rect x="505" y="236" width="3" height="3"/>
-          </g>
-        </svg>
-        <div class="hero-shade"></div>
-        <div class="hero-text">
-          <h2 class="hero-title">Hello, ${escHtml(displayName)}!</h2>
-          <p class="hero-sub">Stay informed. Stay prepared.</p>
-          <span class="hero-bar"></span>
+    <div class="space-y-6 md:space-y-0 md:grid md:grid-cols-12 md:gap-6">
+      
+      <!-- Left Column: Welcome & Quick Action -->
+      <div class="md:col-span-4 space-y-4">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md transition-colors">
+          <p class="text-xs text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wider">Personal Resident Dashboard</p>
+          <h2 class="text-2xl font-black text-slate-900 dark:text-white mt-1 truncate">Hello, ${String(displayName).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}!</h2>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">${userEmail}</p>
+          <p class="text-xs text-slate-600 dark:text-slate-400 mt-3 leading-relaxed">Track the real-time status of the hazards you personally reported.</p>
+          <button onclick="switchTab('submit')" class="mt-5 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3 px-4 rounded-xl shadow-lg flex items-center justify-center space-x-2 transition cursor-pointer">
+            <i data-lucide="camera" class="w-4 h-4"></i>
+            <span>Report New Hazard with Photo</span>
+          </button>
         </div>
-        <svg class="hero-shield" viewBox="0 0 100 116" aria-hidden="true">
-          <defs><linearGradient id="hg-sh" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8f7dff"/><stop offset="1" stop-color="#4b3bd6"/></linearGradient></defs>
-          <path d="M50 4 L92 20 V58 C92 84 74 102 50 112 C26 102 8 84 8 58 V20Z" fill="url(#hg-sh)" fill-opacity=".45" stroke="#b3a6ff" stroke-width="4" stroke-linejoin="round"/>
-          <path d="M30 58 L45 73 L72 42" fill="none" stroke="#e9e4ff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </section>
 
-      <!-- Quick actions -->
-      <section class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <button onclick="switchTab('submit')" class="qa qa-primary"><i data-lucide="megaphone" class="w-5 h-5"></i><span>Report Hazard</span><i data-lucide="arrow-right" class="w-4 h-4 ml-auto"></i></button>
-        <button onclick="switchTab('map')" class="qa"><i data-lucide="map-pin" class="w-5 h-5"></i><span>View Map</span><i data-lucide="arrow-right" class="w-4 h-4 ml-auto"></i></button>
-        <button onclick="switchTab('reports')" class="qa"><i data-lucide="file-text" class="w-5 h-5"></i><span>My Reports</span><i data-lucide="arrow-right" class="w-4 h-4 ml-auto"></i></button>
-      </section>
-
-      <!-- Stat cards -->
-      <section class="grid grid-cols-3 gap-2 sm:gap-3">
-        <div class="stat stat-warn">
-          <div class="stat-ico"><i data-lucide="alert-triangle" class="w-5 h-5 sm:w-7 sm:h-7"></i></div>
-          <div><div class="stat-num">${pendingCount}</div><div class="stat-lbl">Active Hazard</div></div>
-          <svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none"><path d="M0 26 C15 28 20 12 35 18 S60 26 72 12 S90 6 100 2" fill="none" stroke="#f5b73b" stroke-width="2.5" stroke-linecap="round"/></svg>
-        </div>
-        <div class="stat stat-prog">
-          <div class="stat-ico"><i data-lucide="check" class="w-5 h-5 sm:w-7 sm:h-7"></i></div>
-          <div><div class="stat-num">${inProgressCount}</div><div class="stat-lbl">In Progress</div></div>
-          <svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none"><path d="M0 24 C15 26 25 10 40 16 S65 28 78 14 S92 8 100 4" fill="none" stroke="#2fd08a" stroke-width="2.5" stroke-linecap="round"/></svg>
-        </div>
-        <div class="stat stat-done">
-          <div class="stat-ico"><i data-lucide="check-circle-2" class="w-5 h-5 sm:w-7 sm:h-7"></i></div>
-          <div><div class="stat-num">${resolvedCount}</div><div class="stat-lbl">Resolved</div></div>
-          <svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none"><path d="M0 26 C18 24 24 14 40 20 S66 24 80 10 S94 8 100 3" fill="none" stroke="#8b7cff" stroke-width="2.5" stroke-linecap="round"/></svg>
-        </div>
-      </section>
-
-      <!-- Recent reports + Alerts -->
-      <section class="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <div class="panel lg:col-span-3">
-          <div class="panel-head">
-            <div class="flex items-center gap-2"><i data-lucide="clock" class="w-5 h-5 text-indigo-300"></i><h3>Recent Reports</h3></div>
-            <button onclick="switchTab('reports')" class="link-btn">View All <i data-lucide="arrow-right" class="w-4 h-4"></i></button>
+        <!-- Personal Report Summary -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md transition-colors">
+          <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-3">📊 My Report Summary</h4>
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60">
+              <div class="text-lg font-black text-amber-600 dark:text-amber-400">${pendingCount}</div>
+              <div class="text-[10px] font-semibold text-amber-700 dark:text-amber-300">Pending</div>
+            </div>
+            <div class="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60">
+              <div class="text-lg font-black text-blue-600 dark:text-blue-400">${inProgressCount}</div>
+              <div class="text-[10px] font-semibold text-blue-700 dark:text-blue-300">In Progress</div>
+            </div>
+            <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60">
+              <div class="text-lg font-black text-emerald-600 dark:text-emerald-400">${resolvedCount}</div>
+              <div class="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">Resolved</div>
+            </div>
           </div>
-          ${recent.length === 0 ? `
-            <div class="empty">
-              <p>You haven't submitted any hazard reports yet.</p>
-              <button onclick="switchTab('submit')" class="link-btn">Submit your first report <i data-lucide="arrow-right" class="w-4 h-4"></i></button>
-            </div>` : recent.map(r => `
-            <div class="rep">
-              <img src="${r.image}" alt="Hazard photo" />
-              <div class="min-w-0 flex-1">
-                <p class="rep-title">${escHtml(r.title)}</p>
-                <div class="mt-1">${statusChip(r.status)}</div>
-                <p class="rep-meta">📍 ${escHtml(r.location)}</p>
-                <p class="rep-meta">${escHtml(fmtReportDate(r))}</p>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 hidden md:block shadow-md transition-colors">
+          <h4 class="text-xs font-bold text-slate-800 dark:text-slate-300 mb-2">⚡ System Status</h4>
+          <div class="space-y-2 text-xs text-slate-600 dark:text-slate-400">
+            <div class="flex justify-between"><span>Cloud Firestore:</span> <span class="text-emerald-600 dark:text-emerald-400 font-bold">Connected ✅</span></div>
+            <div class="flex justify-between"><span>GIS Mapping:</span> <span class="text-blue-600 dark:text-blue-400 font-bold">Leaflet Active</span></div>
+            <div class="flex justify-between"><span>Active Reports:</span> <span class="font-bold text-slate-900 dark:text-white">${reports.length} Pins</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: My Submitted Reports -->
+      <div class="md:col-span-8 space-y-3">
+        <div class="flex justify-between items-center px-1">
+          <h3 class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">My Submitted Reports</h3>
+          <span class="text-xs text-blue-600 dark:text-blue-400 font-semibold">${myReports.length} Personal Report${myReports.length === 1 ? '' : 's'}</span>
+        </div>
+        <div class="space-y-3">
+          ${myReports.length === 0 ? `
+            <div class="text-center py-12 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2 shadow-md">
+              <p class="text-xs text-slate-400 italic">You haven't submitted any hazard reports yet.</p>
+              <button onclick="switchTab('submit')" class="text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline cursor-pointer">Submit your first report →</button>
+            </div>
+          ` : myReports.map(r => `
+            <div class="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center space-x-4 shadow-md transition-colors">
+              <img src="${r.image}" class="w-16 h-16 object-cover rounded-xl flex-shrink-0 border border-slate-200 dark:border-slate-800" alt="Hazard Photo" />
+              <div class="flex-1 min-w-0">
+                <div class="flex justify-between items-start">
+                  <p class="text-xs font-bold text-slate-900 dark:text-white truncate">${r.title}</p>
+                  <span class="text-[10px] font-semibold px-2.5 py-0.5 rounded-md border ${r.status === 'Pending' ? 'bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800' : r.status === 'In Progress' ? 'bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800' : 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'}">
+                    ${r.status}
+                  </span>
+                </div>
+                <p class="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">📍 ${r.location}</p>
+                <p class="text-[10px] text-slate-500 mt-1 line-clamp-1">${r.description}</p>
               </div>
-              <i data-lucide="chevron-right" class="w-5 h-5 text-indigo-300 flex-shrink-0"></i>
-            </div>`).join('')}
+            </div>
+          `).join('')}
         </div>
+      </div>
 
-        <div id="alerts-panel" class="panel lg:col-span-2">
-          <div class="panel-head">
-            <div class="flex items-center gap-2"><i data-lucide="megaphone" class="w-5 h-5 text-indigo-300"></i><h3>Alerts</h3>${alerts.length ? `<span class="badge">${alerts.length}</span>` : ''}</div>
-          </div>
-          ${alerts.length === 0 ? `<div class="empty"><p>No active hazards in the community right now.</p></div>` : alerts.map(r => `
-            <div class="alert-row">
-              <div class="alert-ico ${(r.status || 'Pending') === 'Pending' ? 'alert-red' : 'alert-blue'}"><i data-lucide="${(r.status || 'Pending') === 'Pending' ? 'alert-circle' : 'info'}" class="w-4 h-4"></i></div>
-              <div class="min-w-0 flex-1">
-                <div class="flex justify-between gap-2"><p class="alert-title truncate">${escHtml(r.title)}</p><span class="alert-time">${timeAgo(r)}</span></div>
-                <p class="alert-desc">${escHtml(r.status || 'Pending')} • ${escHtml(r.location)}</p>
-              </div>
-            </div>`).join('')}
-        </div>
-      </section>
-
-      <!-- System status -->
-      <section class="panel status-bar">
-        <div class="flex items-center gap-3">
-          <svg viewBox="0 0 40 46" class="w-9 h-10 flex-shrink-0" aria-hidden="true"><path d="M20 2 L37 8 V22 C37 33 30 40 20 44 C10 40 3 33 3 22V8Z" fill="#1f9d63" stroke="#5be3a3" stroke-width="2.5" stroke-linejoin="round"/><path d="M12 22 L18 28 L29 15" fill="none" stroke="#eafff4" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <div>
-            <p class="status-lbl">System Status</p>
-            <p class="status-val ${online ? 'is-on' : 'is-off'}"><span class="dot"></span>${online ? 'Online' : 'Offline'}</p>
-          </div>
-        </div>
-        <div class="status-sep"></div>
-        <div class="flex items-center gap-3">
-          <i data-lucide="clock" class="w-6 h-6 text-indigo-300 flex-shrink-0"></i>
-          <div>
-            <p class="status-lbl">Last Updated</p>
-            <p class="status-time">${escHtml(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }))} • ${escHtml(new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }))}</p>
-          </div>
-        </div>
-      </section>
     </div>
   `;
-
-  if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // Screen 2: Submit View
@@ -392,7 +302,7 @@ function renderSubmit(container) {
           </div>
 
           <div id="camera-controls" class="space-y-2 py-2">
-            <div class="flex flex-wrap justify-center gap-2">
+            <div class="flex justify-center space-x-3">
               <button type="button" onclick="startWebcam()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow flex items-center space-x-1.5 transition cursor-pointer">
                 <i data-lucide="camera" class="w-4 h-4"></i>
                 <span>Live Camera</span>
@@ -403,15 +313,7 @@ function renderSubmit(container) {
                 <span>Upload File</span>
                 <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" onchange="handleImageCapture(event)" class="hidden" />
               </label>
-
-              <!-- Android: opens the system file browser instead of the photo picker, which can remove GPS -->
-              <label id="browse-files-btn" class="hidden cursor-pointer bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 flex items-center space-x-1.5 transition">
-                <i data-lucide="folder-open" class="w-4 h-4"></i>
-                <span>Browse Files</span>
-                <input type="file" accept="*/*" onchange="handleImageCapture(event)" class="hidden" />
-              </label>
             </div>
-            <p id="android-hint" class="hidden text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">📱 Android: to keep the photo's GPS location, tap <b>Browse Files</b> and pick the photo from Internal storage › DCIM › Camera.</p>
           </div>
         </div>
 
@@ -436,13 +338,6 @@ function renderSubmit(container) {
 
     </form>
   `;
-
-  if (/Android/i.test(navigator.userAgent)) {
-    ['browse-files-btn', 'android-hint'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.classList.remove('hidden');
-    });
-  }
 
   initPickerMap();
   if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -521,19 +416,11 @@ async function startWebcam() {
 }
 
 function triggerMobileCameraFallback() {
-  let input = document.getElementById('camera-capture-input');
-  if (!input) {
-    input = document.createElement('input');
-    input.type = 'file';
-    input.id = 'camera-capture-input';
-    input.accept = 'image/*';
-    input.setAttribute('capture', 'environment');
-    input.style.display = 'none';
-    // true = photo was just taken with the camera
-    input.addEventListener('change', (e) => handleImageCapture(e, true));
-    document.body.appendChild(input);   // must stay in the page, or Android can drop the result
-  }
-  input.value = '';
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.capture = 'environment';
+  input.onchange = (e) => handleImageCapture(e, true); // true = photo was just taken with the camera
   input.click();
 }
 
@@ -698,11 +585,8 @@ function readPhotoGps(file) {
         }
 
         if (!names.length) names = Object.keys(tags);
-        const everyTag = names.concat(Object.keys(tags));
-        const cameraTags = ['Make', 'Model', 'DateTimeOriginal', 'DateTime', 'ExposureTime', 'FNumber', 'ISOSpeedRatings', 'FocalLength'];
         return resolve({
           coords: null,
-          hadExif: everyTag.some(n => cameraTags.includes(n)),
           note: `${file.type || 'unknown type'}, ${Math.round(file.size / 1024)} KB, tags: ${names.slice(0, 12).join(', ') || 'none'}`
         });
       } catch (err) {
@@ -740,13 +624,6 @@ async function handleImageCapture(event, fromCamera = false) {
   const file = input.files && input.files[0];
   if (!file) return;
 
-  const looksLikeImage = /^image\//.test(file.type) || /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name || '');
-  if (!looksLikeImage) {
-    alert('Please choose a photo (JPG, PNG, WebP or HEIC).');
-    try { input.value = ''; } catch (e) {}
-    return;
-  }
-
   setGeoStatus('🔍 Reading photo location...');
 
   const previewDone = loadPhotoPreview(file);
@@ -762,16 +639,11 @@ async function handleImageCapture(event, fromCamera = false) {
     await tagFromLiveCamera();
   } else {
     geoSource = null;
-    const onAndroid = /Android/i.test(navigator.userAgent);
-    let why;
-    if (result.hadExif) {
-      why = onAndroid
-        ? `The camera details are there but the GPS is not, so your phone's photo picker removed the location. Tap "Browse Files" and pick this photo from Internal storage > DCIM > Camera.`
-        : `The camera details are there but the GPS is not, so the location was removed or was never recorded (check that Location tags are on in your Camera settings).`;
-    } else {
-      why = `This file has no camera data at all. It may be a screenshot, a download, or a copy sent through a chat app. Use the original photo from DCIM/Camera.`;
-    }
-    setGeoStatus(`⚠️ No GPS found. ${why} Or tap "Use my current location", or tap the map to pin the hazard. (${result.note})`);
+    setGeoStatus(
+      `⚠️ No GPS found in this photo (${result.note}). The location was removed by the app or photo picker. ` +
+      `Tap "Use my current location", or tap the map to pin the hazard. ` +
+      `Tip: pick the original from My Files > DCIM/Camera, with Location tags turned on in your Camera settings.`
+    );
   }
 
   await previewDone;
